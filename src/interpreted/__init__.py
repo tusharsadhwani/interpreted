@@ -1,7 +1,7 @@
 """interpreted - A Python interpreter, in Python."""
 
 
-def some_function() -> str:
-    """Returns a string."""
-
-    return "This is a string"
+def interpret(code: str) -> None:
+    """Runs Python code."""
+    # NOTE: THIS IS A PLACEHOLDER. There will be a lexer, parser and interpreter here.
+    exec(code)
