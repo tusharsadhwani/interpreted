@@ -41,7 +41,7 @@ class Tokenizer:
         self.source = source
         self.tokens: list[Token] = []
 
-        self.start = self.end = 0
+        self.start = self.next = 0
 
         self.indent = ""
         self.bracket_level = 0
@@ -53,43 +53,42 @@ class Tokenizer:
     @property
     def scanned(self) -> int:
         """Returns True if the source has been fully scanned."""
-        return self.end >= len(self.source) - 1
+        return self.next >= len(self.source)
 
     def advance(self) -> None:
-        self.end += 1
+        self.next += 1
 
-    def skip_char(self) -> str:
-        assert self.end == self.start
-        self.start += 1
+    def skip_token(self) -> str:
+        self.start = self.next
 
     def peek(self) -> str:
         """Returns the current character, without actually consuming it."""
         if self.scanned:
             return ""
 
-        return self.source[self.end + 1]
+        return self.source[self.next]
 
     def peek_next(self) -> str:
         """Returns the next character, without actually consuming it."""
-        if self.end + 1 >= len(self.source) - 1:
+        if self.next + 1 >= len(self.source):
             return ""
 
-        return self.source[self.end + 2]
+        return self.source[self.next + 1]
 
     def read_char(self) -> str:
         """
         Reads one character from the source.
         If the source has been exhausted, returns an empty string.
         """
+        char = self.source[self.next]
         self.advance()
-        char = self.source[self.end]
         return char
 
     def add_token(self, token_type: TokenType) -> None:
         """Adds a new token for the just-scanned characters."""
-        string = self.source[self.start : self.end + 1]
-        self.tokens.append(Token(token_type, string, self.start, self.end))
-        self.start = self.end + 1
+        string = self.source[self.start : self.next]
+        self.tokens.append(Token(token_type, string, self.start, self.next - 1))
+        self.start = self.next
 
     def scan_tokens(self) -> list[Token]:
         """Scans the source to produce tokens of variables, operators, strings etc."""
@@ -108,7 +107,7 @@ class Tokenizer:
 
         # Ignore all whitespace that's not at beginning of line
         elif char in "\f\v\t\r\n ":
-            self.skip_char()
+            self.skip_token()
 
         # ** and **= support
         elif char == "*" and self.peek() == "*":
@@ -174,7 +173,7 @@ class Tokenizer:
             self.advance()
 
         # Since comments are thrown away, reset the start pointer
-        self.start = self.end + 1
+        self.skip_token()
 
     def scan_identifier(self) -> None:
         """Scans keywords and variable names."""
@@ -208,7 +207,7 @@ class Tokenizer:
             escape = char + next_char
             raise TokenizeError(
                 f"Unknown escape sequence: {escape!r}",
-                index=self.end,
+                index=self.next,
             )
 
         # we never found the end of the string!
