@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from enum import Enum, unique
 from typing import NamedTuple
 
@@ -230,3 +231,8 @@ class Tokenizer:
                 self.advance()
 
         self.add_token(TokenType.NUMBER)
+
+
+if __name__ == "__main__":
+    for _token in Tokenizer(sys.stdin.read()).scan_tokens():
+        print(_token)
