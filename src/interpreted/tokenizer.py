@@ -28,9 +28,9 @@ class Token(NamedTuple):
 
 
 class TokenizeError(Exception):
-    def __init__(self, msg: str, location: int) -> None:
+    def __init__(self, msg: str, index: int) -> None:
         super().__init__(msg)
-        self.location = location
+        self.index = index
 
 
 class TokenizeIncompleteError(TokenizeError):
@@ -59,7 +59,7 @@ class Tokenizer:
     def advance(self) -> None:
         self.next += 1
 
-    def skip_token(self) -> str:
+    def skip_token(self) -> None:
         self.start = self.next
 
     def peek(self) -> str:
@@ -119,7 +119,7 @@ class Tokenizer:
             self.add_token(TokenType.OP)
 
         # comments
-        elif char == "/" and self.peek("/"):
+        elif char == "/" and self.peek() == "/":
             self.advance()
             self.scan_comment()
 

@@ -56,5 +56,5 @@ from interpreted.tokenizer import Token, TokenType, Tokenizer
         ),
     ),
 )
-def test_tokenizer(source: str, tokens: list[str]):
+def test_tokenizer(source: str, tokens: list[Token]) -> None:
     assert Tokenizer(dedent(source)).scan_tokens() == tokens

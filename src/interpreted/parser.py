@@ -44,9 +44,9 @@ class Parser:
         unary -> '+' unary | '-' unary | '~' unary | power
         power -> primary '**' unary
         primary -> primary '.' NAME
-                | primary '[' expression ']'
-                | primary '(' arguments? ')'
-                | literal
+                 | primary '[' expression ']'
+                 | primary '(' arguments? ')'
+                 | literal
         arguments -> expression (',' expression)*
         literal -> NUMBER
                  | NAME
