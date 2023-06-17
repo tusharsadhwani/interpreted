@@ -44,7 +44,7 @@ class Tokenizer:
 
         self.start = self.next = 0
 
-        self.indent = ""
+        self.indents = [""]
         self.bracket_level = 0
 
     @property
@@ -119,12 +119,12 @@ class Tokenizer:
             self.add_token(TokenType.OP)
 
         # comments
-        elif char == "/" and self.peek() == "/":
+        elif char == "#":
             self.advance()
             self.scan_comment()
 
-        # augmented assigns
-        elif char in ("+", "-", "*", "/", "=", "!", "@", "%", "^", "&"):
+        # assigns and augmented assigns
+        elif char in ("+", "-", "*", "/", "<", ">", "=", "!", "@", "%", "^", "&"):
             if self.peek() == "=":
                 self.advance()
             self.add_token(TokenType.OP)
@@ -157,16 +157,30 @@ class Tokenizer:
             char = self.read_char()
             indent += char
 
-        # the indent must be consistent with the previous one
-        if not (indent.startswith(self.indent) or self.indent.startswith(indent)):
+        current_indent = self.indents[-1]
+
+        # the indent must be consistent with the previous ones
+        if not (indent.startswith(current_indent) or current_indent.startswith(indent)):
             raise TokenizeError("Inconsistent use of tabs and spaces", self.start)
 
-        if len(indent) > len(self.indent):
+        # If the indent length is > current indents, we have a new indent level
+        if len(indent) > len(current_indent):
             self.add_token(TokenType.INDENT)
-        elif len(indent) < len(self.indent):
+            self.indents.append(indent)
+            return
+
+        # Otherwise, the dedent should be to some level that already exists.
+        # If not, the line is at an unknown indent level.
+        if indent not in self.indents:
+            raise TokenizeError("Dedent does not match any outer level", self.start)
+
+        # if there are 5 indent levels, and the current one is 3rd, then we dedent twice
+        dedent_count = len(self.indents) - (self.indents.index(indent) + 1)
+        for _ in range(dedent_count):
+            self.indents.pop()
             self.add_token(TokenType.DEDENT)
 
-        self.indent = indent
+        current_indent = indent
 
     def scan_comment(self) -> None:
         """Reads and discards a comment. A comment goes on till a newline."""
@@ -233,6 +247,29 @@ class Tokenizer:
         self.add_token(TokenType.NUMBER)
 
 
+def index_to_line_column(index: int, source: str) -> tuple[str, str]:
+    """Converts the tokenizer index into a line and column for the error."""
+    line, column = 1, 0
+    for char in source[:index]:
+        if char == "\n":
+            line += 1
+            column = 0
+        else:
+            column += 1
+
+    return line, column
+
+
+def main() -> None:
+    source = sys.stdin.read()
+    try:
+        for token in Tokenizer(source).scan_tokens():
+            print(token)
+
+    except TokenizeError as exc:
+        line, column = index_to_line_column(exc.index, source)
+        print(f"Tokenize Error at {line}:{column} -", exc)
+
+
 if __name__ == "__main__":
-    for _token in Tokenizer(sys.stdin.read()).scan_tokens():
-        print(_token)
+    main()
