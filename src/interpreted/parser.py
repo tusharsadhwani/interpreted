@@ -3,8 +3,30 @@ import json
 
 import sys
 
-from interpreted.tokenizer import Token, Tokenizer
-from interpreted.nodes import Module
+from interpreted.tokenizer import (
+    Token,
+    TokenType,
+    TokenizeError,
+    Tokenizer,
+    index_to_line_column,
+)
+from interpreted.nodes import (
+    Assign,
+    ExprStmt,
+    Expression,
+    Module,
+    Name,
+    Pass,
+    Return,
+    Statement,
+    Subscript,
+)
+
+
+class ParseError(Exception):
+    def __init__(self, msg: str, index: int) -> None:
+        super().__init__(msg)
+        self.index = index
 
 
 class Parser:
@@ -13,7 +35,6 @@ class Parser:
         Module -> Statement*
         Statement -> single_line_stmt | multi_line_stmt
         multi_line_stmt -> FunctionDef | If | While | For
-        single_line_stmt -> Pass | Assign | Return | ExprStmt
         FunctionDef -> 'def' NAME '(' params? ')' ':' block
         params -> NAME (',' NAME)*
         block -> NEWLINE INDENT Statement* DEDENT | single_line_stmt
@@ -25,10 +46,13 @@ class Parser:
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block]
         targets -> primary (',' primary )* ','?
+        single_line_stmt -> Pass | Return | Assign | ExprStmt
+        Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
         expressions -> expression (',' expression )* ','?
-        ExprStmt -> expression '\n'
-        Assign -> targets '=' Assign | logical_or
+        Assign -> targets '=' Assign | expressions
+        ExprStmt -> expressions '\n'
+
         expression -> logical_or
         logical_or -> logical_and ('or' logical_and)*
         logical_and -> logical_not ('and' logical_not)*
@@ -43,10 +67,14 @@ class Parser:
               | unary
         unary -> '+' unary | '-' unary | '~' unary | power
         power -> primary '**' unary
-        primary -> primary '.' NAME
-                 | primary '[' expression ']'
-                 | primary '(' arguments? ')'
+
+        primary -> Attribute
+                 | Subscript
+                 | Call
                  | literal
+        Attribute -> primary '.' NAME
+        Subscript -> primary '[' expression ']'
+        Call -> primary '(' arguments? ')'
         arguments -> expression (',' expression)*
         literal -> NUMBER
                  | NAME
@@ -55,8 +83,10 @@ class Parser:
                  | 'False'
                  | 'None'
                  | List
+                 | Tuple
                  | Dict
         List -> '[' expressions ']'
+        Tuple -> '(' expression ',' expressions? ')'
         Dict -> '{' (expression ':' expression)* ','? ']'
     """
 
@@ -65,28 +95,167 @@ class Parser:
         self.index = 0
 
     @property
-    def parsed(self) -> int:
+    def parsed(self) -> bool:
         return self.index >= len(self.tokens) - 1
 
     def advance(self) -> None:
         self.index += 1
 
-    def get_token(self) -> Token | None:
+    def peek(self) -> Token | None:
         if self.parsed:
             return None
 
         return self.tokens[self.index]
 
+    def match_type(self, token_type: TokenType) -> bool:
+        if self.parsed:
+            return False
+
+        token = self.peek()
+        if token.token_type != token_type:
+            return False
+
+        self.advance()
+        return True
+
+    def match_name(self, *names: str) -> bool:
+        if self.parsed:
+            return False
+
+        token = self.peek()
+        if token.token_type != TokenType.NAME or token.string not in names:
+            return False
+
+        self.advance()
+        return True
+
+    def expect(self, token_type: TokenType) -> None:
+        if self.parsed:
+            raise ParseError(f"Expected {token_type}, found EOF", self.index)
+
+        if not self.match_type(token_type):
+            next_token = self.peek()
+            raise ParseError(
+                f"Expected {token_type}, found {next_token.token_type}", self.index
+            )
+
     def parse(self) -> Module:
+        statements: list[Statement] = []
         while not self.parsed:
-            token = self.get_token()
+            statement = self.parse_statement()
+            statements.append(statement)
+
+        return Module(body=statements)
+
+    def parse_statement(self) -> Statement:
+        # Extra newlines can be ignored as empty statements
+        while self.match_type(TokenType.NEWLINE):
+            pass
+
+        if self.match_name("def", "if", "for", "while"):
+            return self.parse_multiline_statement()
+        else:
+            return self.parse_single_line_statement()
+
+    def parse_single_line_statement(self):
+        if self.match_name("pass"):
+            self.expect(TokenType.NEWLINE)
+            return Pass()
+
+        elif self.match_name("return"):
+            return_value = self.parse_expressions()
+            self.expect(TokenType.NEWLINE)
+            return Return(value=return_value)
+
+        # Now here we come to a conundrum.
+        # Assign expects `targets`, and ExprStmt expects `expressions`, and `targets`
+        # is a restricted version of `expressions`.
+        # Trying to parse an assignment, but then failing would mean that you have to
+        # backtrack and re-try with `expressions`.
+        # But, I don't want to do all the backtrack logic.
+        # So we compromise. Instead we parse the `targets` part as an expression, and
+        # then check if it is followed by an `=`, if it is then we see if it's a valid
+        # target or not, and fail or proceed accordingly.
+        else:
+            return self.parse_assign_or_exprstmt()
+
+    def parse_expressions(self) -> Expression:
+        # TODO: return an expression,
+        # or an arbitrarily bracketed, comma sepratated list of expressions.
+        ...
+
+    def parse_assign_or_exprstmt(self) -> Assign | Expression:
+        expressions = self.parse_expressions()
+
+        next_token = self.peek()
+        if not (next_token.token_type == TokenType.OP):
+            self.expect(TokenType.NEWLINE)
+            return ExprStmt(value=expressions)
+
+        if next_token.string in (
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "<=",
+            ">=",
+            "==",
+            "!=",
+            "@=",
+            "%=",
+            "^=",
+            "&=",
+        ):
+            # TODO: augassign
+            return None
+
+        if next_token.string != "=":
+            raise ParseError(
+                f"Expected assignment, found '{next_token.string}'", self.index + 1
+            )
+
+        # Now since we know the next token is a `=`, we parse an Assign node
+        assign_targets = []
+        while self.match_op("="):
+            for target in expressions:
+                if not isinstance(target, (Name, Subscript)):
+                    node_type = type(target).__name__
+                    raise ParseError(f"Cannot assign to a {node_type}", self.index)
+
+            assign_targets.append(expressions)
+            expressions = self.parse_expressions()
+
+        return Assign(targets=assign_targets, value=expressions)
+
+    def parse_expression_statement(self) -> ExprStmt:
+        expr = self.parse_expression()
+        self.expect(TokenType.NEWLINE)
+        return ExprStmt(value=expr)
+
+    def parse_expression(self) -> Expression:
+        ...
+
+
+def main() -> None:
+    source = sys.stdin.read()
+
+    try:
+        tokens = Tokenizer(source).scan_tokens()
+    except TokenizeError as exc:
+        line, column = index_to_line_column(exc.index, source)
+        print(f"Tokenize Error at {line}:{column} -", exc)
+        return
+
+    try:
+        module = Parser(tokens).parse()
+    except ParseError as exc:
+        token = tokens[exc.index]
+        line, column = index_to_line_column(token.start, source)
+        print(f"Parse Error at {line}:{column} -", exc)
+        return
+
+    print(json.dumps(module, default=vars, indent=2))
 
 
 if __name__ == "__main__":
-    print(
-        json.dumps(
-            Parser(Tokenizer(sys.stdin.read()).scan_tokens()),
-            default=vars,
-            indent=2,
-        )
-    )
+    main()

@@ -221,7 +221,7 @@ class Tokenizer:
             # Raise error for not known escapes
             escape = char + next_char
             raise TokenizeError(
-                f"Unknown escape sequence: {escape!r}",
+                f"Unknown escape sequence: '{escape}'",
                 index=self.next,
             )
 

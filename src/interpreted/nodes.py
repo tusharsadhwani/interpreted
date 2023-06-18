@@ -15,6 +15,26 @@ class Constant(Expression):
 
 
 @dataclass
+class Name(Expression):
+    value: str
+
+
+@dataclass
+class Attribute(Expression):
+    value: Expression
+    attr: str
+
+
+@dataclass
+class Subscript(Expression):
+    value: Expression
+    key: Expression
+
+
+Target: TypeAlias = Name | Attribute | Subscript
+
+
+@dataclass
 class Call(Expression):
     function: Expression
     args: list[Expression]
@@ -52,7 +72,7 @@ class For(Statement):
 
 @dataclass
 class Assign(Statement):
-    target: Expression
+    targets: Expression
     value: Expression
 
 
@@ -60,6 +80,16 @@ class Assign(Statement):
 class AugAssign(Statement):
     target: Expression
     op: OP
+    value: Expression
+
+
+@dataclass
+class Pass(Statement):
+    pass
+
+
+@dataclass
+class Return(Statement):
     value: Expression
 
 
