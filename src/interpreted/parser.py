@@ -1,5 +1,4 @@
 from __future__ import annotations
-import json
 from keyword import iskeyword
 
 import sys
@@ -16,12 +15,15 @@ from interpreted.nodes import (
     Constant,
     ExprStmt,
     Expression,
+    For,
+    If,
     Module,
     Name,
     Pass,
     Return,
     Statement,
     Subscript,
+    While,
 )
 
 
@@ -103,6 +105,12 @@ class Parser:
     def advance(self) -> None:
         self.index += 1
 
+    def current(self) -> Token | None:
+        if self.parsed:
+            return None
+
+        return self.tokens[self.index - 1]
+
     def peek(self) -> Token | None:
         if self.parsed:
             return None
@@ -147,10 +155,18 @@ class Parser:
             raise ParseError(f"Expected {token_type}, found EOF", self.index)
 
         if not self.match_type(token_type):
-            next_token = self.peek()
+            token = self.peek()
             raise ParseError(
-                f"Expected {token_type}, found {next_token.token_type}", self.index
+                f"Expected {token_type}, found {token.token_type}", self.index
             )
+
+    def expect_op(self, op: str) -> None:
+        if self.parsed:
+            raise ParseError(f"Expected {op}, found EOF", self.index)
+
+        if not self.match_op(op):
+            token = self.peek()
+            raise ParseError(f"Expected '{op}', found '{token.string}'", self.index)
 
     def parse(self) -> Module:
         statements: list[Statement] = []
@@ -170,7 +186,37 @@ class Parser:
         else:
             return self.parse_single_line_statement()
 
-    def parse_single_line_statement(self):
+    def parse_multiline_statement(self) -> For | If | While:
+        keyword = self.current().string
+        if keyword == "if":
+            return self.parse_if()
+
+        # TODO: while, for
+        raise NotImplementedError()
+
+    def parse_if(self) -> If:
+        condition = self.parse_expression()
+        self.expect_op(":")
+        self.expect(TokenType.NEWLINE)
+        body = self.parse_body()
+        # TODO: else
+        if self.match_name("else"):
+            raise NotImplementedError()
+        return If(condition=condition, body=body, orelse=[])
+
+    def parse_body(self) -> list[Statement]:
+        self.expect(TokenType.INDENT)
+
+        body = []
+        while True:
+            statement = self.parse_statement()
+            body.append(statement)
+            if self.parsed or self.match_type(TokenType.DEDENT):
+                break
+
+        return body
+
+    def parse_single_line_statement(self) -> Pass | Return | Assign | ExprStmt:
         if self.match_name("pass"):
             self.expect(TokenType.NEWLINE)
             return Pass()
@@ -197,7 +243,7 @@ class Parser:
         # or an arbitrarily bracketed, comma sepratated list of expressions.
         return [self.parse_literal()]
 
-    def parse_assign_or_exprstmt(self) -> Assign | Expression:
+    def parse_assign_or_exprstmt(self) -> Assign | ExprStmt:
         expressions = self.parse_expressions()
 
         next_token = self.peek()
@@ -220,12 +266,10 @@ class Parser:
             "&=",
         ):
             # TODO: augassign
-            return None
+            raise NotImplementedError()
 
         if next_token.string != "=":
-            raise ParseError(
-                f"Expected assignment, found '{next_token.string}'", self.index
-            )
+            raise ParseError(f"Expected '=', found '{next_token.string}'", self.index)
 
         # Now since we know the next token is a `=`, we parse an Assign node
         assign_targets = []
@@ -238,21 +282,17 @@ class Parser:
             assign_targets.append(expressions)
             expressions = self.parse_expressions()
 
+        self.expect(TokenType.NEWLINE)
         return Assign(targets=assign_targets, value=expressions)
 
-    def parse_expression_statement(self) -> ExprStmt:
-        expr = self.parse_expression()
-        self.expect(TokenType.NEWLINE)
-        return ExprStmt(value=expr)
-
     def parse_expression(self) -> Expression:
-        ...
+        # TODO: the entire expression ladder
+        return self.parse_literal()
 
     def parse_literal(self) -> Expression:
-        token = self.peek()
-        if token.token_type == TokenType.NAME:
+        if self.match_type(TokenType.NAME):
+            token = self.current()
             if token.string in ("True", "False", "None") or not iskeyword(token.string):
-                self.advance()
                 if token.string == "True":
                     value = True
                 elif token.string == "False":
@@ -267,15 +307,15 @@ class Parser:
             else:
                 raise ParseError("Unexpected keyword", self.index)
 
-        if token.token_type == TokenType.NUMBER:
-            self.advance()
+        if self.match_type(TokenType.NUMBER):
+            token = self.current()
             if token.string.isdigit():
                 return Constant(int(token.string))
             else:
                 return Constant(float(token.string))
 
-        if token.token_type == TokenType.STRING:
-            self.advance()
+        if self.match_type(TokenType.STRING):
+            token = self.current()
             return Constant(unquote(token.string))
 
 

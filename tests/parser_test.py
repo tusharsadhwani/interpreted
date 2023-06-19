@@ -1,3 +1,5 @@
+from textwrap import dedent
+
 import pytest
 
 from interpreted.nodes import (
@@ -19,7 +21,8 @@ from interpreted.tokenizer import Tokenizer
     (
         (
             """\
-            for i in range(10 % 3):
+            i = 0
+            while i < 10:
                 i **= 2
                 print(i)
             """,
@@ -58,5 +61,5 @@ from interpreted.tokenizer import Tokenizer
     ),
 )
 def test_parser(source: str, tree: Module) -> None:
-    tokens = Tokenizer(source).scan_tokens()
+    tokens = Tokenizer(dedent(source)).scan_tokens()
     assert Parser(tokens).parse() == tree

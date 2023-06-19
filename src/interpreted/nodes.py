@@ -71,6 +71,20 @@ class For(Statement):
 
 
 @dataclass
+class If(Statement):
+    condition: Expression
+    body: list[Statement]
+    orelse: list[Statement]
+
+
+@dataclass
+class While(Statement):
+    condition: Expression
+    body: list[Statement]
+    orelse: list[Statement]
+
+
+@dataclass
 class Assign(Statement):
     targets: Expression
     value: Expression
