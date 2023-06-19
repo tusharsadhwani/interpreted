@@ -3,14 +3,15 @@ from textwrap import dedent
 import pytest
 
 from interpreted.nodes import (
+    Assign,
+    Compare,
     Constant,
     ExprStmt,
     Module,
-    For,
     Call,
     Name,
-    BinOp,
     AugAssign,
+    While,
 )
 from interpreted.parser import Parser
 from interpreted.tokenizer import Tokenizer
@@ -28,22 +29,20 @@ from interpreted.tokenizer import Tokenizer
             """,
             Module(
                 body=[
-                    For(
-                        target=Name(id="i"),
-                        iterable=Call(
-                            function=Name(id="range"),
-                            args=[
-                                BinOp(
-                                    left=Constant(value=10),
-                                    op="%",
-                                    right=Constant(value=3),
-                                ),
-                            ],
+                    Assign(
+                        targets=[Name(id="i")],
+                        value=Constant(value=0),
+                    ),
+                    While(
+                        condition=Compare(
+                            left=Name(id="i"),
+                            op="<",
+                            right=Constant(value=10),
                         ),
                         body=[
                             AugAssign(
                                 target=Name(id="i"),
-                                op="**",
+                                op="**=",
                                 value=Constant(value=2),
                             ),
                             ExprStmt(

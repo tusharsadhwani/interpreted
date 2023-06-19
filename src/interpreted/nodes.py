@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-OP: TypeAlias = Literal["+", "-", "*", "/", "**", "!", "@", "%", "^", "&"]
+BINOP: TypeAlias = Literal["+", "-", "*", "/", "**", "!", "@", "%", "^", "&"]
 
 
 @dataclass
@@ -48,7 +48,14 @@ class Name(Expression):
 @dataclass
 class BinOp(Expression):
     left: Expression
-    op: OP
+    op: BINOP
+    right: Expression
+
+
+@dataclass
+class Compare(Expression):
+    left: Expression
+    op: Literal["<", ">", "<=", ">=", "==", "!="]
     right: Expression
 
 
@@ -93,7 +100,7 @@ class Assign(Statement):
 @dataclass
 class AugAssign(Statement):
     target: Expression
-    op: OP
+    op: BINOP
     value: Expression
 
 

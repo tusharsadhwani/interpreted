@@ -12,6 +12,9 @@ from interpreted.tokenizer import (
 )
 from interpreted.nodes import (
     Assign,
+    AugAssign,
+    Call,
+    Compare,
     Constant,
     ExprStmt,
     Expression,
@@ -191,18 +194,35 @@ class Parser:
         if keyword == "if":
             return self.parse_if()
 
-        # TODO: while, for
+        if keyword == "while":
+            return self.parse_while()
+
+        # TODO: for
         raise NotImplementedError()
 
     def parse_if(self) -> If:
         condition = self.parse_expression()
         self.expect_op(":")
         self.expect(TokenType.NEWLINE)
+
         body = self.parse_body()
         # TODO: else
         if self.match_name("else"):
             raise NotImplementedError()
+
         return If(condition=condition, body=body, orelse=[])
+
+    def parse_while(self) -> While:
+        condition = self.parse_expression()
+        self.expect_op(":")
+        self.expect(TokenType.NEWLINE)
+
+        body = self.parse_body()
+        # TODO: else
+        if self.match_name("else"):
+            raise NotImplementedError()
+
+        return While(condition=condition, body=body, orelse=[])
 
     def parse_body(self) -> list[Statement]:
         self.expect(TokenType.INDENT)
@@ -238,35 +258,37 @@ class Parser:
         else:
             return self.parse_assign_or_exprstmt()
 
-    def parse_expressions(self) -> Expression:
-        # TODO: return an expression,
-        # or an arbitrarily bracketed, comma sepratated list of expressions.
-        return [self.parse_literal()]
-
     def parse_assign_or_exprstmt(self) -> Assign | ExprStmt:
         expressions = self.parse_expressions()
 
         next_token = self.peek()
         if next_token.token_type != TokenType.OP:
             self.expect(TokenType.NEWLINE)
-            return ExprStmt(value=expressions)
+            # TODO: make a tuple
+            assert len(expressions) == 1
+            return ExprStmt(value=expressions[0])
 
-        if next_token.string in (
+        if self.match_op(
             "+=",
             "-=",
             "*=",
-            "/=",
-            "<=",
-            ">=",
-            "==",
-            "!=",
             "@=",
+            "/=",
             "%=",
-            "^=",
             "&=",
+            "|=",
+            "^=",
+            "**=",
         ):
-            # TODO: augassign
-            raise NotImplementedError()
+            assert_expressions_are_targets(expressions, self.index)
+            if len(expressions) != 1:
+                raise ParseError(
+                    "Augmented assignment only works with a single target", self.index
+                )
+
+            target = expressions[0]
+            value = self.parse_expression()
+            return AugAssign(target=target, op=next_token.string, value=value)
 
         if next_token.string != "=":
             raise ParseError(f"Expected '=', found '{next_token.string}'", self.index)
@@ -274,20 +296,56 @@ class Parser:
         # Now since we know the next token is a `=`, we parse an Assign node
         assign_targets = []
         while self.match_op("="):
-            for target in expressions:
-                if not isinstance(target, (Name, Subscript)):
-                    node_type = type(target).__name__
-                    raise ParseError(f"Cannot assign to a {node_type}", self.index)
+            assert_expressions_are_targets(expressions, self.index)
 
-            assign_targets.append(expressions)
+            # TODO: make them a tuple if > 1
+            assert len(expressions) == 1
+            assign_targets.append(expressions[0])
             expressions = self.parse_expressions()
 
         self.expect(TokenType.NEWLINE)
-        return Assign(targets=assign_targets, value=expressions)
+        # TODO: make them a tuple if > 1
+        assert len(expressions) == 1
+        return Assign(targets=assign_targets, value=expressions[0])
 
     def parse_expression(self) -> Expression:
         # TODO: the entire expression ladder
-        return self.parse_literal()
+        return self.parse_comparison()
+
+    def parse_expressions(self) -> list[Expression]:
+        # TODO: parse a comma sepratated list of expressions.
+        return [self.parse_comparison()]
+
+    def parse_comparison(self) -> Expression:
+        primary = self.parse_primary()
+        if not self.match_op("<", ">", "<=", ">=", "==", "!="):
+            return primary
+
+        left = primary
+        operator = self.current().string
+        right = self.parse_primary()
+        return Compare(left=left, op=operator, right=right)
+
+    def parse_primary(self) -> Expression:
+        primary = self.parse_literal()
+
+        while True:
+            # TODO: attributes and subscripts
+            if self.match_op("."):
+                raise NotImplementedError()
+
+            elif self.match_op("["):
+                raise NotImplementedError()
+
+            elif self.match_op("("):
+                args = self.parse_expressions()
+                self.expect_op(")")
+                primary = Call(function=primary, args=args)
+
+            else:
+                break
+
+        return primary
 
     def parse_literal(self) -> Expression:
         if self.match_type(TokenType.NAME):
@@ -317,6 +375,15 @@ class Parser:
         if self.match_type(TokenType.STRING):
             token = self.current()
             return Constant(unquote(token.string))
+
+        raise NotImplementedError()
+
+
+def assert_expressions_are_targets(expressions: list[Expression], index) -> None:
+    for target in expressions:
+        if not isinstance(target, (Name, Subscript)):
+            node_type = type(target).__name__
+            raise ParseError(f"Cannot assign to a {node_type}", index)
 
 
 def unquote(string: str) -> str:
