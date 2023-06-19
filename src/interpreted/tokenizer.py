@@ -163,6 +163,11 @@ class Tokenizer:
         if not (indent.startswith(current_indent) or current_indent.startswith(indent)):
             raise TokenizeError("Inconsistent use of tabs and spaces", self.start)
 
+        # if the indent level is the same as the last line, drop the spaces, do nothing
+        if current_indent == indent:
+            self.skip_token()
+            return
+
         # If the indent length is > current indents, we have a new indent level
         if len(indent) > len(current_indent):
             self.add_token(TokenType.INDENT)

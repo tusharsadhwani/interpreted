@@ -60,6 +60,7 @@ from interpreted.tokenizer import Token, TokenType, Tokenizer
             foo
                 bar
                     baz
+                    baz2
             buzz
                 stuff
                       quux
@@ -76,28 +77,30 @@ from interpreted.tokenizer import Token, TokenType, Tokenizer
                 Token(token_type=TokenType.INDENT, string="        ", start=12, end=19),
                 Token(token_type=TokenType.NAME, string="baz", start=20, end=22),
                 Token(token_type=TokenType.NEWLINE, string="\n", start=23, end=23),
-                Token(token_type=TokenType.DEDENT, string="", start=24, end=23),
-                Token(token_type=TokenType.DEDENT, string="", start=24, end=23),
-                Token(token_type=TokenType.NAME, string="buzz", start=24, end=27),
-                Token(token_type=TokenType.NEWLINE, string="\n", start=28, end=28),
-                Token(token_type=TokenType.INDENT, string="    ", start=29, end=32),
-                Token(token_type=TokenType.NAME, string="stuff", start=33, end=37),
-                Token(token_type=TokenType.NEWLINE, string="\n", start=38, end=38),
+                Token(token_type=TokenType.NAME, string="baz2", start=32, end=35),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=36, end=36),
+                Token(token_type=TokenType.DEDENT, string="", start=37, end=36),
+                Token(token_type=TokenType.DEDENT, string="", start=37, end=36),
+                Token(token_type=TokenType.NAME, string="buzz", start=37, end=40),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=41, end=41),
+                Token(token_type=TokenType.INDENT, string="    ", start=42, end=45),
+                Token(token_type=TokenType.NAME, string="stuff", start=46, end=50),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=51, end=51),
                 Token(
-                    token_type=TokenType.INDENT, string="          ", start=39, end=48
+                    token_type=TokenType.INDENT, string="          ", start=52, end=61
                 ),
-                Token(token_type=TokenType.NAME, string="quux", start=49, end=52),
-                Token(token_type=TokenType.NEWLINE, string="\n", start=53, end=53),
-                Token(token_type=TokenType.DEDENT, string="    ", start=54, end=57),
-                Token(token_type=TokenType.NAME, string="spam", start=58, end=61),
-                Token(token_type=TokenType.NEWLINE, string="\n", start=62, end=62),
-                Token(token_type=TokenType.INDENT, string="      ", start=63, end=68),
-                Token(token_type=TokenType.NAME, string="eggs", start=69, end=72),
-                Token(token_type=TokenType.NEWLINE, string="\n", start=73, end=73),
-                Token(token_type=TokenType.DEDENT, string="", start=74, end=73),
-                Token(token_type=TokenType.DEDENT, string="", start=74, end=73),
-                Token(token_type=TokenType.NAME, string="bacon", start=74, end=78),
-                Token(token_type=TokenType.NEWLINE, string="\n", start=79, end=79),
+                Token(token_type=TokenType.NAME, string="quux", start=62, end=65),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=66, end=66),
+                Token(token_type=TokenType.DEDENT, string="    ", start=67, end=70),
+                Token(token_type=TokenType.NAME, string="spam", start=71, end=74),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=75, end=75),
+                Token(token_type=TokenType.INDENT, string="      ", start=76, end=81),
+                Token(token_type=TokenType.NAME, string="eggs", start=82, end=85),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=86, end=86),
+                Token(token_type=TokenType.DEDENT, string="", start=87, end=86),
+                Token(token_type=TokenType.DEDENT, string="", start=87, end=86),
+                Token(token_type=TokenType.NAME, string="bacon", start=87, end=91),
+                Token(token_type=TokenType.NEWLINE, string="\n", start=92, end=92),
             ],
         ),
     ),
