@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+from keyword import iskeyword
 
 import sys
 
@@ -12,6 +13,7 @@ from interpreted.tokenizer import (
 )
 from interpreted.nodes import (
     Assign,
+    Constant,
     ExprStmt,
     Expression,
     Module,
@@ -129,6 +131,17 @@ class Parser:
         self.advance()
         return True
 
+    def match_op(self, *ops: str) -> bool:
+        if self.parsed:
+            return False
+
+        token = self.peek()
+        if token.token_type != TokenType.OP or token.string not in ops:
+            return False
+
+        self.advance()
+        return True
+
     def expect(self, token_type: TokenType) -> None:
         if self.parsed:
             raise ParseError(f"Expected {token_type}, found EOF", self.index)
@@ -182,13 +195,13 @@ class Parser:
     def parse_expressions(self) -> Expression:
         # TODO: return an expression,
         # or an arbitrarily bracketed, comma sepratated list of expressions.
-        ...
+        return [self.parse_literal()]
 
     def parse_assign_or_exprstmt(self) -> Assign | Expression:
         expressions = self.parse_expressions()
 
         next_token = self.peek()
-        if not (next_token.token_type == TokenType.OP):
+        if next_token.token_type != TokenType.OP:
             self.expect(TokenType.NEWLINE)
             return ExprStmt(value=expressions)
 
@@ -211,7 +224,7 @@ class Parser:
 
         if next_token.string != "=":
             raise ParseError(
-                f"Expected assignment, found '{next_token.string}'", self.index + 1
+                f"Expected assignment, found '{next_token.string}'", self.index
             )
 
         # Now since we know the next token is a `=`, we parse an Assign node
@@ -235,6 +248,56 @@ class Parser:
     def parse_expression(self) -> Expression:
         ...
 
+    def parse_literal(self) -> Expression:
+        token = self.peek()
+        if token.token_type == TokenType.NAME:
+            if token.string in ("True", "False", "None") or not iskeyword(token.string):
+                self.advance()
+                if token.string == "True":
+                    value = True
+                elif token.string == "False":
+                    value = False
+                elif token.string == "None":
+                    value = None
+                else:
+                    value = token.string
+
+                return Name(value)
+
+            else:
+                raise ParseError("Unexpected keyword", self.index)
+
+        if token.token_type == TokenType.NUMBER:
+            self.advance()
+            if token.string.isdigit():
+                return Constant(int(token.string))
+            else:
+                return Constant(float(token.string))
+
+        if token.token_type == TokenType.STRING:
+            self.advance()
+            return Constant(unquote(token.string))
+
+
+def unquote(string: str) -> str:
+    if string.startswith('"""'):
+        assert string.endswith('"""')
+        return string[3:-3]
+
+    if string.startswith("'''"):
+        assert string.endswith("'''")
+        return string[3:-3]
+
+    if string.startswith('"'):
+        assert string.endswith('"')
+        return string[1:-1]
+
+    if string.startswith("'"):
+        assert string.endswith("'")
+        return string[1:-1]
+
+    raise ValueError(f"Unknown string format: {string}")
+
 
 def main() -> None:
     source = sys.stdin.read()
@@ -254,7 +317,7 @@ def main() -> None:
         print(f"Parse Error at {line}:{column} -", exc)
         return
 
-    print(json.dumps(module, default=vars, indent=2))
+    print(module)
 
 
 if __name__ == "__main__":
