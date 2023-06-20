@@ -424,7 +424,15 @@ def main() -> None:
         print(f"Parse Error at {line}:{column} -", exc)
         return
 
-    print(module)
+    if "--pretty" in sys.argv:
+        try:
+            import black
+        except ImportError:
+            print("Error: `black` needs to be installed for `--pretty` to work.")
+
+        print(black.format_str(repr(module), mode=black.Mode()))
+    else:
+        print(module)
 
 
 if __name__ == "__main__":
