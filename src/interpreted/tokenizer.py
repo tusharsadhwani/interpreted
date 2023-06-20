@@ -203,10 +203,27 @@ class Tokenizer:
         self.add_token(TokenType.NAME)
 
     def scan_string(self, quote_char: str) -> None:
+        if self.peek() == quote_char and self.peek_next() == quote_char:
+            self.advance()
+            self.advance()
+            is_multiline = True
+        else:
+            is_multiline = False
+
         while not self.scanned:
             char = self.read_char()
 
-            if char == quote_char:
+            if (
+                is_multiline
+                and char == quote_char
+                and self.peek() == quote_char
+                and self.peek_next() == quote_char
+            ):
+                self.advance()
+                self.advance()
+                self.add_token(TokenType.STRING)
+                return
+            elif not is_multiline and char == quote_char:
                 self.add_token(TokenType.STRING)
                 return
 
