@@ -19,6 +19,7 @@ from interpreted.nodes import (
     ExprStmt,
     Expression,
     For,
+    FunctionDef,
     If,
     Module,
     Name,
@@ -189,8 +190,11 @@ class Parser:
         else:
             return self.parse_single_line_statement()
 
-    def parse_multiline_statement(self) -> For | If | While:
+    def parse_multiline_statement(self) -> FunctionDef | For | If | While:
         keyword = self.current().string
+        if keyword == "def":
+            return self.parse_function_def()
+
         if keyword == "if":
             return self.parse_if()
 
@@ -200,10 +204,35 @@ class Parser:
         # TODO: for
         raise NotImplementedError()
 
+    def parse_function_def(self) -> FunctionDef:
+        self.expect(TokenType.NAME)
+        function_name = self.current().string
+        self.expect_op("(")
+
+        # special case: function just closes
+        if self.match_op(")"):
+            params = []
+        else:
+            self.expect(TokenType.NAME)
+            first_param = self.current().string
+            params = [first_param]
+
+            while not self.match_op(")"):
+                # every new arg must be preceded by a comma
+                self.expect_op(",")
+                self.expect(TokenType.NAME)
+                param = self.current().string
+                params.append(param)
+
+                # TODO: trailing comma support
+
+        self.expect_op(":")
+        body = self.parse_body()
+        return FunctionDef(name=function_name, params=params, body=body)
+
     def parse_if(self) -> If:
         condition = self.parse_expression()
         self.expect_op(":")
-        self.expect(TokenType.NEWLINE)
 
         body = self.parse_body()
         # TODO: else
@@ -215,7 +244,6 @@ class Parser:
     def parse_while(self) -> While:
         condition = self.parse_expression()
         self.expect_op(":")
-        self.expect(TokenType.NEWLINE)
 
         body = self.parse_body()
         # TODO: else
@@ -225,6 +253,7 @@ class Parser:
         return While(condition=condition, body=body, orelse=[])
 
     def parse_body(self) -> list[Statement]:
+        self.expect(TokenType.NEWLINE)
         self.expect(TokenType.INDENT)
 
         body = []

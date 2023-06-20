@@ -70,6 +70,13 @@ class ExprStmt(Statement):
 
 
 @dataclass
+class FunctionDef(Statement):
+    name: str
+    params: list[str]
+    body: list[Statement]
+
+
+@dataclass
 class For(Statement):
     target: Expression
     iterable: Expression
