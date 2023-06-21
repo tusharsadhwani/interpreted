@@ -104,7 +104,7 @@ class Parser:
 
     @property
     def parsed(self) -> bool:
-        return self.index >= len(self.tokens) - 1
+        return self.index >= len(self.tokens)
 
     def advance(self) -> None:
         self.index += 1
@@ -364,7 +364,9 @@ class Parser:
                 raise NotImplementedError()
 
             elif self.match_op("["):
-                raise NotImplementedError()
+                key = self.parse_expression()
+                self.expect_op("]")
+                primary = Subscript(value=primary, key=key)
 
             elif self.match_op("("):
                 # edge case: no args

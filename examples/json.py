@@ -1,6 +1,3 @@
-from collections import deque
-
-
 def extract_string(json_string, index, tokens):
     """Extracts a single string token from JSON string"""
     start = index
@@ -19,7 +16,7 @@ def extract_string(json_string, index, tokens):
 
         if char == '"':
             index += 1
-            string = json_string[start:index]
+            string = slice(json_string, start, index)
             tokens.append({"value": string, "type": "string"})
 
             return index
