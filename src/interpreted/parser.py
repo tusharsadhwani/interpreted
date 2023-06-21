@@ -53,11 +53,11 @@ class Parser:
         else -> 'else' ':' block
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block]
-        targets -> primary (',' primary )* ','?
+        targets -> primary (',' primary)* ','?
         single_line_stmt -> Pass | Return | Assign | ExprStmt
         Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
-        expressions -> expression (',' expression )* ','?
+        expressions -> expression (',' expression)* ','?
         Assign -> targets '=' Assign | expressions
         ExprStmt -> expressions '\n'
 
@@ -397,7 +397,7 @@ class Parser:
                 return Name(value)
 
             else:
-                raise ParseError("Unexpected keyword", self.index)
+                raise ParseError(f"Unexpected token '{token.string}'", self.index - 1)
 
         if self.match_type(TokenType.NUMBER):
             token = self.current()
