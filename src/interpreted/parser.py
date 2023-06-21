@@ -367,8 +367,13 @@ class Parser:
                 raise NotImplementedError()
 
             elif self.match_op("("):
-                args = self.parse_expressions()
-                self.expect_op(")")
+                # edge case: no args
+                if self.match_op(")"):
+                    args = []
+                else:
+                    args = self.parse_expressions()
+                    self.expect_op(")")
+
                 primary = Call(function=primary, args=args)
 
             else:
