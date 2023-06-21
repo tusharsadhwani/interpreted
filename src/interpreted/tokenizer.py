@@ -104,6 +104,11 @@ class Tokenizer:
         # Indent detection at beginning of line (i.e. after a newline)
         if char == "\n" and not self.in_parentheses:
             self.add_token(TokenType.NEWLINE)
+            # ignore all adjacent newlines
+            while self.peek() == "\n":
+                self.advance()
+            self.skip_token()
+
             self.detect_indent()
 
         # Ignore all whitespace that's not at beginning of line
