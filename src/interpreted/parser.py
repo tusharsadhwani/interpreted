@@ -57,11 +57,11 @@ class Parser:
         block -> NEWLINE INDENT Statement* DEDENT | single_line_stmt
         If -> 'if' expression ':' block elif
             | 'if' expression ':' block else?
-        elif -> 'elif' expression ':' block elif_stmt
+        elif -> 'elif' expression ':' block elif
               | 'elif' expression ':' block else?
         else -> 'else' ':' block
         While -> 'while' expression ':' block [else]
-        For -> 'for' targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block]
+        For -> 'for' targets 'in' expressions ':' block else?
         targets -> primary (',' primary)* ','?
         single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt
         Pass -> 'pass' '\n'
@@ -244,24 +244,30 @@ class Parser:
     def parse_if(self) -> If:
         condition = self.parse_expression()
         self.expect_op(":")
-
         body = self.parse_body()
-        # TODO: else
-        if self.match_name("else"):
-            raise NotImplementedError()
 
-        return If(condition=condition, body=body, orelse=[])
+        orelse = []
+        if self.match_name("elif"):
+            orelse = self.parse_if()
+
+        elif self.match_name("else"):
+            self.expect_op(":")
+            orelse = self.parse_body()
+
+        return If(condition=condition, body=body, orelse=orelse)
 
     def parse_while(self) -> While:
         condition = self.parse_expression()
         self.expect_op(":")
 
         body = self.parse_body()
-        # TODO: else
-        if self.match_name("else"):
-            raise NotImplementedError()
 
-        return While(condition=condition, body=body, orelse=[])
+        orelse = []
+        if self.match_name("else"):
+            self.expect_op(":")
+            orelse = self.parse_body()
+
+        return While(condition=condition, body=body, orelse=orelse)
 
     def parse_body(self) -> list[Statement]:
         self.expect(TokenType.NEWLINE)

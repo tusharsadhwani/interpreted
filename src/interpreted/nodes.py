@@ -105,19 +105,23 @@ class FunctionDef(Statement):
     body: list[Statement]
 
 
+class Else:
+    body: list[Expression]
+
+
 @dataclass
 class For(Statement):
     target: Expression
     iterable: Expression
     body: list[Statement]
-    orelse: list[Statement]
+    orelse: Else
 
 
 @dataclass
 class If(Statement):
     condition: Expression
     body: list[Statement]
-    orelse: list[Statement]
+    orelse: "If | Else"
 
 
 @dataclass

@@ -84,7 +84,7 @@ def extract_special(json_string, index, tokens):
     return index
 
 
-def tokenize(json_string: str):
+def tokenize(json_string):
     """Converts a JSON string into a queue of tokens"""
     tokens = deque()
 

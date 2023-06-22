@@ -62,3 +62,8 @@ from interpreted.tokenizer import Tokenizer
 def test_parser(source: str, tree: Module) -> None:
     tokens = Tokenizer(dedent(source)).scan_tokens()
     assert Parser(tokens).parse() == tree
+
+
+# TODO: tuples are still not supported.
+# TODO: extra parens ((((x)))), ((((x, y)))) don't work
+# TODO: multiple return values / receivers are still not properly supported
