@@ -53,7 +53,7 @@ def extract_number(json_string, index, tokens):
 
         index += 1
 
-    number = json_string[start:index]
+    number = slice(json_string, start, index)
     tokens.append({"value": number, "type": "number"})
     return index
 

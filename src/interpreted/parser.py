@@ -12,6 +12,7 @@ from interpreted.tokenizer import (
 )
 from interpreted.nodes import (
     Assign,
+    Attribute,
     AugAssign,
     BinOp,
     BoolOp,
@@ -20,11 +21,13 @@ from interpreted.nodes import (
     Compare,
     Constant,
     Continue,
+    Dict,
     ExprStmt,
     Expression,
     For,
     FunctionDef,
     If,
+    List,
     Module,
     Name,
     Pass,
@@ -440,9 +443,10 @@ class Parser:
         primary = self.parse_literal()
 
         while True:
-            # TODO: attributes and subscripts
             if self.match_op("."):
-                raise NotImplementedError()
+                self.expect(TokenType.NAME)
+                attrname = self.current().string
+                primary = Attribute(value=primary, attr=attrname)
 
             elif self.match_op("["):
                 key = self.parse_expression()
@@ -480,7 +484,7 @@ class Parser:
                 return Name(value)
 
             else:
-                raise ParseError(f"Unexpected token '{token.string}'", self.index - 1)
+                raise ParseError(f"Unexpected token {token.string!r}", self.index - 1)
 
         if self.match_type(TokenType.NUMBER):
             token = self.current()
@@ -493,7 +497,30 @@ class Parser:
             token = self.current()
             return Constant(unquote(token.string))
 
-        raise NotImplementedError()
+        if self.match_op("["):
+            elements = self.parse_expressions()
+            self.expect_op(")")
+            return Tuple(elements)
+
+        if self.match_op("["):
+            elements = self.parse_expressions()
+            self.expect_op("]")
+            return List(elements)
+
+        if self.match_op("{"):
+            keys = [self.parse_expression()]
+            self.expect_op(":")
+            values = [self.parse_expression()]
+            while self.match_op(","):
+                keys.append(self.parse_expression())
+                self.expect_op(":")
+                values.append(self.parse_expression())
+
+            # TODO: trailing comma support
+            self.expect_op("}")
+            return Dict(keys=keys, values=values)
+
+        raise ParseError(f"Unexpected token {self.current().string!r}", self.index - 1)
 
 
 def assert_expressions_are_targets(expressions: list[Expression], index) -> None:

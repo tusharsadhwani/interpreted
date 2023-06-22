@@ -291,7 +291,10 @@ def main() -> None:
     source = sys.stdin.read()
     try:
         for token in Tokenizer(source).scan_tokens():
-            print(token)
+            line, column = index_to_line_column(token.start, source)
+            print(
+                f"<Token.{token.token_type._name_:7} {line:3}:{column:<3}: {token.string!r}>"
+            )
 
     except TokenizeError as exc:
         line, column = index_to_line_column(exc.index, source)

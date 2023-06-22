@@ -20,8 +20,19 @@ class Name(Expression):
 
 
 @dataclass
+class List(Expression):
+    elements: list[Expression]
+
+
+@dataclass
 class Tuple(Expression):
     elements: list[Expression]
+
+
+@dataclass
+class Dict(Expression):
+    keys: list[Expression]
+    values: list[Expression]
 
 
 @dataclass
