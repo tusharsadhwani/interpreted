@@ -508,16 +508,28 @@ class Parser:
             return Constant(unquote(token.string))
 
         if self.match_op("("):
+            # special_case: no items
+            if self.match_op(")"):
+                return Tuple(elements=[])
+
             elements = self.parse_expressions()
             self.expect_op(")")
             return Tuple(elements)
 
         if self.match_op("["):
+            # special_case: no items
+            if self.match_op("]"):
+                return List(elements=[])
+
             elements = self.parse_expressions()
             self.expect_op("]")
             return List(elements)
 
         if self.match_op("{"):
+            # special_case: no items
+            if self.match_op("}"):
+                return Dict(keys=[], values=[])
+
             keys = [self.parse_expression()]
             self.expect_op(":")
             values = [self.parse_expression()]
@@ -530,7 +542,7 @@ class Parser:
             self.expect_op("}")
             return Dict(keys=keys, values=values)
 
-        raise ParseError(f"Unexpected token {self.current().string!r}", self.index - 1)
+        raise ParseError(f"Unexpected token {self.peek().string!r}", self.index)
 
 
 def assert_expressions_are_targets(expressions: list[Expression], index) -> None:
