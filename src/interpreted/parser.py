@@ -74,7 +74,7 @@ class Parser:
         logical_or -> logical_and ('or' logical_and)*
         logical_and -> logical_not ('and' logical_not)*
         logical_not -> 'not' logical_not | comparison
-        comparison -> sum (('>' | '>=' | '<' | '<=' | '==' | '!=') sum)*
+        comparison -> sum (('>' | '>=' | '<' | '<=' | '==' | '!=' | 'in' | 'not' 'in') sum)*
         # can also be written as:
         # sum -> factor ('+' factor)* | factor ('-' factor)* | factor
         sum -> sum '+' factor | sum '-' factor | factor
@@ -405,7 +405,10 @@ class Parser:
 
     def parse_comparison(self) -> Expression:
         left = self.parse_sum()
-        while self.match_op("<", ">", "<=", ">=", "==", "!="):
+        # TODO: "not in", "is not" not supported
+        while self.match_op("<", ">", "<=", ">=", "==", "!=") or self.match_name(
+            "in", "is"
+        ):
             operator = self.current().string
             right = self.parse_sum()
             left = Compare(left=left, op=operator, right=right)
@@ -504,7 +507,7 @@ class Parser:
             token = self.current()
             return Constant(unquote(token.string))
 
-        if self.match_op("["):
+        if self.match_op("("):
             elements = self.parse_expressions()
             self.expect_op(")")
             return Tuple(elements)

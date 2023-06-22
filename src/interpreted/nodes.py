@@ -84,7 +84,7 @@ class UnaryOp(Expression):
 @dataclass
 class Compare(Expression):
     left: Expression
-    op: Literal["<", ">", "<=", ">=", "==", "!="]
+    op: Literal["<", ">", "<=", ">=", "==", "!=", "in", "not in", "is", "is not"]
     right: Expression
 
 

@@ -67,3 +67,4 @@ def test_parser(source: str, tree: Module) -> None:
 # TODO: tuples are still not supported.
 # TODO: extra parens ((((x)))), ((((x, y)))) don't work
 # TODO: multiple return values / receivers are still not properly supported
+# TODO: `a == b == c` is not like Python, `1 == 1 in [1, 2]` gives False
