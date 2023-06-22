@@ -341,6 +341,7 @@ class Parser:
 
             target = expressions[0]
             value = self.parse_expression()
+            self.expect(TokenType.NEWLINE)
             return AugAssign(target=target, op=next_token.string, value=value)
 
         if next_token.string != "=":
