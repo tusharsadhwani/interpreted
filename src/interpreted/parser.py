@@ -13,6 +13,8 @@ from interpreted.tokenizer import (
 from interpreted.nodes import (
     Assign,
     AugAssign,
+    BinOp,
+    BoolOp,
     Call,
     Compare,
     Constant,
@@ -27,6 +29,7 @@ from interpreted.nodes import (
     Return,
     Statement,
     Subscript,
+    UnaryOp,
     While,
 )
 
@@ -65,13 +68,15 @@ class Parser:
         logical_or -> logical_and ('or' logical_and)*
         logical_and -> logical_not ('and' logical_not)*
         logical_not -> 'not' logical_not | comparison
-        comparison -> sum (('>' | '>=' | '<' | '<=') sum)*
-        sum -> sum '+' term | sum '-' term | term
-        term -> term '*' factor
-              | term '/' factor
-              | term '//' factor
-              | term '%' factor
-              | term '@' factor
+        comparison -> sum (('>' | '>=' | '<' | '<=' | '==' | '!=') sum)*
+        # can also be written as:
+        # sum -> factor ('+' factor)* | factor ('-' factor)* | factor
+        sum -> sum '+' factor | sum '-' factor | factor
+        term -> factor '*' unary
+              | factor '/' unary
+              | factor '//' unary
+              | factor '%' unary
+              | factor '@' unary
               | unary
         unary -> '+' unary | '-' unary | '~' unary | power
         power -> primary '**' unary
@@ -337,23 +342,78 @@ class Parser:
         assert len(expressions) == 1
         return Assign(targets=assign_targets, value=expressions[0])
 
-    def parse_expression(self) -> Expression:
-        # TODO: the entire expression ladder
-        return self.parse_comparison()
-
     def parse_expressions(self) -> list[Expression]:
         # TODO: parse a comma sepratated list of expressions.
-        return [self.parse_comparison()]
+        return [self.parse_expression()]
+
+    def parse_expression(self) -> Expression:
+        # TODO: extraneous parens can be parsed here.
+        return self.parse_or()
+
+    def parse_or(self) -> Expression:
+        left = self.parse_and()
+        while self.match_name("or"):
+            right = self.parse_and()
+            left = BoolOp(left=left, op="or", right=right)
+
+        return left
+
+    def parse_and(self) -> Expression:
+        left = self.parse_not()
+        while self.match_name("and"):
+            right = self.parse_not()
+            left = BoolOp(left=left, op="and", right=right)
+
+        return left
+
+    def parse_not(self) -> Expression:
+        if self.match_name("not"):
+            return UnaryOp(value=self.parse_not(), op="not")
+
+        return self.parse_comparison()
 
     def parse_comparison(self) -> Expression:
-        primary = self.parse_primary()
-        if not self.match_op("<", ">", "<=", ">=", "==", "!="):
-            return primary
+        left = self.parse_sum()
+        while self.match_op("<", ">", "<=", ">=", "==", "!="):
+            operator = self.current().string
+            right = self.parse_sum()
+            left = Compare(left=left, op=operator, right=right)
 
-        left = primary
-        operator = self.current().string
-        right = self.parse_primary()
-        return Compare(left=left, op=operator, right=right)
+        return left
+
+    def parse_sum(self) -> Expression:
+        left = self.parse_factor()
+        while self.match_op("+", "-"):
+            operator = self.current().string
+            right = self.parse_factor()
+            left = BinOp(left=left, op=operator, right=right)
+
+        return left
+
+    def parse_factor(self) -> Expression:
+        left = self.parse_unary()
+        while self.match_op("*", "/", "//", "%", "@"):
+            operator = self.current().string
+            right = self.parse_unary()
+            left = BinOp(left=left, op=operator, right=right)
+
+        return left
+
+    def parse_unary(self) -> Expression:
+        if self.match_op("~", "+", "-"):
+            operator = self.current().string
+            return UnaryOp(value=self.parse_unary(), op=operator)
+
+        return self.parse_power()
+
+    def parse_power(self) -> Expression:
+        left = self.parse_primary()
+        while self.match_op("**"):
+            operator = self.current().string
+            right = self.parse_unary()
+            left = BinOp(left=left, op=operator, right=right)
+
+        return left
 
     def parse_primary(self) -> Expression:
         primary = self.parse_literal()

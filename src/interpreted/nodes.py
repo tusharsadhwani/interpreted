@@ -53,6 +53,19 @@ class BinOp(Expression):
 
 
 @dataclass
+class BoolOp(Expression):
+    left: Expression
+    op: Literal["and", "or"]
+    right: Expression
+
+
+@dataclass
+class UnaryOp(Expression):
+    value: Expression
+    op: Literal["not"]
+
+
+@dataclass
 class Compare(Expression):
     left: Expression
     op: Literal["<", ">", "<=", ">=", "==", "!="]
