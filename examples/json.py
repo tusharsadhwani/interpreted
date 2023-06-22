@@ -281,11 +281,7 @@ def _parse(tokens):
     if token["type"] == "number":
         return parse_number(token)
 
-    special_tokens = {
-        "true": True,
-        "false": False,
-        "null": None,
-    }
+    special_tokens = {"true": True, "false": False, "null": None}
     if token["type"] in ("boolean", "null"):
         return special_tokens[token["value"]]
 

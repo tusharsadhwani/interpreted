@@ -132,6 +132,12 @@ class Parser:
 
         return self.tokens[self.index]
 
+    def peek_next(self) -> Token | None:
+        if self.index + 1 >= len(self.tokens):
+            return None
+
+        return self.tokens[self.index + 1]
+
     def match_type(self, token_type: TokenType) -> bool:
         if self.parsed:
             return False
@@ -405,10 +411,22 @@ class Parser:
 
     def parse_comparison(self) -> Expression:
         left = self.parse_sum()
-        # TODO: "not in", "is not" not supported
-        while self.match_op("<", ">", "<=", ">=", "==", "!=") or self.match_name(
-            "in", "is"
-        ):
+        while True:
+            if self.match_op("<", ">", "<=", ">=", "==", "!="):
+                operator = self.current().string
+            elif self.match_name("in", "is"):
+                operator = self.current().string
+            elif self.peek().string == "is" and self.peek_next().string == "not":
+                self.advance()
+                self.advance()
+                operator = self.current().string
+            elif self.peek().string == "not" and self.peek_next().string == "in":
+                self.advance()
+                self.advance()
+                operator = self.current().string
+            else:
+                break
+
             operator = self.current().string
             right = self.parse_sum()
             left = Compare(left=left, op=operator, right=right)
