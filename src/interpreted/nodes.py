@@ -20,6 +20,11 @@ class Name(Expression):
 
 
 @dataclass
+class Tuple(Expression):
+    elements: list[Expression]
+
+
+@dataclass
 class Attribute(Expression):
     value: Expression
     attr: str
@@ -126,6 +131,16 @@ class AugAssign(Statement):
 
 @dataclass
 class Pass(Statement):
+    pass
+
+
+@dataclass
+class Break(Statement):
+    pass
+
+
+@dataclass
+class Continue(Statement):
     pass
 
 

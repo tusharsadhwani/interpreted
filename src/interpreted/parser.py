@@ -15,9 +15,11 @@ from interpreted.nodes import (
     AugAssign,
     BinOp,
     BoolOp,
+    Break,
     Call,
     Compare,
     Constant,
+    Continue,
     ExprStmt,
     Expression,
     For,
@@ -29,6 +31,7 @@ from interpreted.nodes import (
     Return,
     Statement,
     Subscript,
+    Tuple,
     UnaryOp,
     While,
 )
@@ -57,7 +60,7 @@ class Parser:
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block]
         targets -> primary (',' primary)* ','?
-        single_line_stmt -> Pass | Return | Assign | ExprStmt
+        single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt
         Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
         expressions -> expression (',' expression)* ','?
@@ -270,10 +273,20 @@ class Parser:
 
         return body
 
-    def parse_single_line_statement(self) -> Pass | Return | Assign | ExprStmt:
+    def parse_single_line_statement(
+        self,
+    ) -> Pass | Break | Continue | Return | Assign | ExprStmt:
         if self.match_name("pass"):
             self.expect(TokenType.NEWLINE)
             return Pass()
+
+        if self.match_name("break"):
+            self.expect(TokenType.NEWLINE)
+            return Break()
+
+        if self.match_name("continue"):
+            self.expect(TokenType.NEWLINE)
+            return Continue()
 
         elif self.match_name("return"):
             return_value = self.parse_expressions()
@@ -298,9 +311,12 @@ class Parser:
         next_token = self.peek()
         if next_token.token_type != TokenType.OP:
             self.expect(TokenType.NEWLINE)
-            # TODO: make a tuple
-            assert len(expressions) == 1
-            return ExprStmt(value=expressions[0])
+            if len(expressions) == 1:
+                value = expressions[0]
+            else:
+                value = Tuple(expressions)
+
+            return ExprStmt(value=value)
 
         if self.match_op(
             "+=",
@@ -343,8 +359,13 @@ class Parser:
         return Assign(targets=assign_targets, value=expressions[0])
 
     def parse_expressions(self) -> list[Expression]:
-        # TODO: parse a comma sepratated list of expressions.
-        return [self.parse_expression()]
+        expressions = [self.parse_expression()]
+        while self.match_op(","):
+            expression = self.parse_expression()
+            expressions.append(expression)
+
+        # TODO: trailing comma support
+        return expressions
 
     def parse_expression(self) -> Expression:
         # TODO: extraneous parens can be parsed here.

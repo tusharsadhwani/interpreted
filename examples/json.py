@@ -290,7 +290,7 @@ def _parse(tokens):
         return special_tokens[token["value"]]
 
 
-def parse(json_string: str) -> object:
+def parse(json_string):
     """Parses a JSON string into a Python object"""
     tokens = tokenize(json_string)
     if tokens is None:
