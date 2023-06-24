@@ -5,7 +5,12 @@ BINOP: TypeAlias = Literal["+", "-", "*", "/", "**", "!", "@", "%", "^", "&"]
 
 
 @dataclass
-class Expression:
+class Node:
+    ...
+
+
+@dataclass
+class Expression(Node):
     ...
 
 
@@ -89,7 +94,7 @@ class Compare(Expression):
 
 
 @dataclass
-class Statement:
+class Statement(Node):
     ...
 
 
@@ -105,23 +110,19 @@ class FunctionDef(Statement):
     body: list[Statement]
 
 
-class Else:
-    body: list[Expression]
-
-
 @dataclass
 class For(Statement):
     target: Expression
     iterable: Expression
     body: list[Statement]
-    orelse: Else
+    orelse: list[Statement]
 
 
 @dataclass
 class If(Statement):
     condition: Expression
     body: list[Statement]
-    orelse: "If | Else"
+    orelse: list[Statement]
 
 
 @dataclass

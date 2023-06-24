@@ -3,13 +3,7 @@ from keyword import iskeyword
 
 import sys
 
-from interpreted.tokenizer import (
-    Token,
-    TokenType,
-    TokenizeError,
-    Tokenizer,
-    index_to_line_column,
-)
+from interpreted.tokenizer import Token, TokenType, index_to_line_column, tokenize
 from interpreted.nodes import (
     Assign,
     Attribute,
@@ -590,22 +584,25 @@ def unquote(string: str) -> str:
     raise ValueError(f"Unknown string format: {string}")
 
 
-def main() -> None:
-    source = sys.stdin.read()
+def parse(source: str) -> Module | None:
+    tokens = tokenize(source)
+    if tokens is None:
+        return None
 
     try:
-        tokens = Tokenizer(source).scan_tokens()
-    except TokenizeError as exc:
-        line, column = index_to_line_column(exc.index, source)
-        print(f"Tokenize Error at {line}:{column} -", exc)
-        return
+        return Parser(tokens).parse()
 
-    try:
-        module = Parser(tokens).parse()
     except ParseError as exc:
         token = tokens[exc.index]
         line, column = index_to_line_column(token.start, source)
         print(f"Parse Error at {line}:{column} -", exc)
+        return
+
+
+def main() -> None:
+    source = sys.stdin.read()
+    module = parse(source)
+    if module is None:
         return
 
     if "--pretty" in sys.argv:

@@ -33,10 +33,6 @@ class TokenizeError(Exception):
         self.index = index
 
 
-class TokenizeIncompleteError(TokenizeError):
-    ...
-
-
 class Tokenizer:
     def __init__(self, source: str) -> None:
         self.source = source
@@ -238,7 +234,7 @@ class Tokenizer:
             # Detecting valid escape sequences
             next_char = self.peek()
             if next_char == "":
-                raise TokenizeIncompleteError("Unterminated string", index=self.start)
+                raise TokenizeError("Unterminated string", index=self.start)
 
             if next_char in "\nnrtf'\"\\":
                 continue
@@ -253,7 +249,7 @@ class Tokenizer:
             )
 
         # we never found the end of the string!
-        raise TokenizeIncompleteError("Unterminated string", index=self.start)
+        raise TokenizeError("Unterminated string", index=self.start)
 
     def scan_number(self) -> None:
         while self.peek().isdigit():
@@ -287,18 +283,26 @@ def index_to_line_column(index: int, source: str) -> tuple[str, str]:
     return line, column
 
 
-def main() -> None:
-    source = sys.stdin.read()
+def tokenize(source: str) -> list[Token] | None:
     try:
-        for token in Tokenizer(source).scan_tokens():
-            line, column = index_to_line_column(token.start, source)
-            print(
-                f"<Token.{token.token_type._name_:7} {line:3}:{column:<3}: {token.string!r}>"
-            )
+        return Tokenizer(source).scan_tokens()
 
     except TokenizeError as exc:
         line, column = index_to_line_column(exc.index, source)
         print(f"Tokenize Error at {line}:{column} -", exc)
+        return None
+
+
+def main() -> None:
+    source = sys.stdin.read()
+    tokens = tokenize(source)
+    if tokens is None:
+        return
+
+    for token in tokens:
+        token_type = token.token_type._name_
+        line, column = index_to_line_column(token.start, source)
+        print(f"<Token.{token_type:7} {line:3}:{column:<3}: {token.string!r}>")
 
 
 if __name__ == "__main__":
