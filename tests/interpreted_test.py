@@ -25,11 +25,23 @@ import pytest
             x = deque()
             x.append(5)
             x.append(6)
+            print(len(x))
             print(x.popleft())
             y = x.popleft()
-            print(y)
+            print(y, len(x))
             """,
-            "5\n6\n",
+            "2\n5\n6 0\n",
+        ),
+        (
+            """\
+            x = []
+            x.append(5)
+            x.append(6)
+            print(x, len(x))
+            y = ["foo", 10, "bar"]
+            print(y, len(y))
+            """,
+            "[5, 6] 2\n[foo, 10, bar] 3\n",
         ),
     ),
 )
@@ -41,13 +53,12 @@ def test_interpret(source, output) -> None:
 
         process = subprocess.run(
             ["interpreted", file.name],
-            check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
 
-    assert process.stdout.decode() == output
     assert process.stderr == b""
+    assert process.stdout.decode() == output
 
 
 def test_file_not_found() -> None:

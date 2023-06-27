@@ -4,6 +4,7 @@ from collections import deque
 from typing import Any
 from unittest import mock
 
+from interpreted import nodes
 from interpreted.nodes import (
     Assign,
     Attribute,
@@ -39,16 +40,53 @@ class Object:
         self.attributes = {}
         self.methods = {}
 
+    def as_string(self) -> None:
+        raise NotImplementedError
+
 
 class Function(Object):
+    def as_string(self) -> str:
+        raise NotImplementedError
+
     def arg_count(self) -> int:
         raise NotImplementedError
 
-    def ensure_args(self, _: Interpreter, args: list[Object]) -> Object:
+    def ensure_args(self, args: list[Object]) -> Object:
         if len(args) != self.arg_count():
             raise InterpreterError(
-                f"Function takes {self.arg_count()} arguments, {len(args)} given",
+                f"{self.as_string()} takes {self.arg_count()} arguments, {len(args)} given",
             )
+
+    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
+        raise NotImplementedError
+
+
+class Print(Function):
+    def as_string(self) -> str:
+        return "<function 'print'>"
+
+    def arg_count(self) -> int:
+        return mock.ANY
+
+    def call(self, _: Interpreter, args: list[Object]) -> None:
+        print(*[arg.as_string() for arg in args])
+
+
+class Len(Function):
+    def as_string(self) -> str:
+        return "<function 'len'>"
+
+    def arg_count(self) -> int:
+        return 1
+
+    def call(self, _: Interpreter, args: list[Object]) -> Object:
+        super().ensure_args(args)
+
+        item = args[0]
+        if not isinstance(item, (List, Deque)):
+            raise InterpreterError(f"{type(item).__name__} has no len()")
+
+        return Value(len(item._data))
 
 
 class Return(Exception):
@@ -62,11 +100,14 @@ class UserFunction(Function):
     def __init__(self, definition: FunctionDef) -> None:
         self.definition = definition
 
+    def as_string(self) -> str:
+        return f"<function {self.definition.name!r}>"
+
     def arg_count(self) -> int:
         return len(self.definition.params)
 
     def call(self, interpreter: Interpreter, args: list[Object]) -> Object:
-        super().ensure_args(interpreter, args)
+        super().ensure_args(args)
 
         parent_scope = interpreter.scope
 
@@ -89,25 +130,22 @@ class UserFunction(Function):
         return None
 
 
-class Print(Function):
-    def arg_count(self) -> int:
-        return mock.ANY
-
-    def call(self, _: Interpreter, args: list[Object]) -> None:
-        print(*[arg.as_string() for arg in args])
-
-
 class DequeConstructor(Function):
+    def as_string(self) -> str:
+        return "<function 'deque'>"
+
     def arg_count(self) -> int:
         return 0
 
-    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
-        super().ensure_args(interpreter, args)
-
+    def call(self, _: Interpreter, args: list[Object]) -> None:
+        super().ensure_args(args)
         return Deque()
 
 
 class Deque(Object):
+    def as_string(self) -> str:
+        return f"<deque [" + ", ".join(item.as_string() for item in self._data) + "]>"
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -118,17 +156,20 @@ class Deque(Object):
 
 
 class Append(Function):
-    def __init__(self, deque: Deque) -> None:
+    def __init__(self, wrapper: List | Deque) -> None:
         super().__init__()
-        self.deque = deque
+        self.wrapper = wrapper
+
+    def as_string(self) -> str:
+        return f"<method 'append' of {self.wrapper.as_string()}>"
 
     def arg_count(self) -> int:
         return 1
 
-    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
-        super().ensure_args(interpreter, args)
+    def call(self, _: Interpreter, args: list[Object]) -> None:
+        super().ensure_args(args)
         item = args[0]
-        self.deque._data.append(item)
+        self.wrapper._data.append(item)
 
 
 class PopLeft(Function):
@@ -136,11 +177,14 @@ class PopLeft(Function):
         super().__init__()
         self.deque = deque
 
+    def as_string(self) -> str:
+        return f"<method 'popleft' of {self.deque.as_string()}>"
+
     def arg_count(self) -> int:
         return 0
 
     def call(self, interpreter: Interpreter, args: list[Object]) -> None:
-        super().ensure_args(interpreter, args)
+        super().ensure_args(args)
         return self.deque._data.popleft()
 
 
@@ -149,13 +193,29 @@ class Value(Object):
         self.value = value
 
     def as_string(self) -> None:
-        return self.value
+        return str(self.value)
+
+
+class List(Object):
+    def as_string(self) -> str:
+        return f"[" + ", ".join(item.as_string() for item in self._data) + "]"
+
+    def __init__(self, elements=None) -> None:
+        super().__init__()
+
+        if elements is None:
+            elements = []
+
+        self._data = elements
+
+        self.methods["append"] = Append(self)
 
 
 class Interpreter:
     def __init__(self) -> None:
         self.globals = Scope()
         self.globals.set("print", Print())
+        self.globals.set("len", Len())
         self.globals.set("deque", DequeConstructor())
 
         self.scope = self.globals
@@ -220,6 +280,10 @@ class Interpreter:
                 raise InterpreterError(f"{name!r} is not defined")
 
         return value
+
+    def visit_List(self, node: nodes.List) -> List:
+        elements = [self.visit(element) for element in node.elements]
+        return List(elements)
 
     def visit_Constant(self, node: Constant) -> Value:
         return Value(node.value)
