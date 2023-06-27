@@ -83,10 +83,13 @@ class Len(Function):
         super().ensure_args(args)
 
         item = args[0]
-        if not isinstance(item, (List, Deque)):
-            raise InterpreterError(f"{type(item).__name__} has no len()")
+        if isinstance(item, (List, Deque)):
+            return Value(len(item._data))
 
-        return Value(len(item._data))
+        if isinstance(item, Value) and isinstance(item.value, str):
+            return Value(len(item.value))
+
+        raise InterpreterError(f"{type(item).__name__} has no len()")
 
 
 class Return(Exception):
