@@ -1,10 +1,12 @@
 from __future__ import annotations
+from collections import deque
 
 from typing import Any
 from unittest import mock
 
 from interpreted.nodes import (
     Assign,
+    Attribute,
     Call,
     Constant,
     ExprStmt,
@@ -33,13 +35,20 @@ class InterpreterError(Exception):
 class Object:
     """Every object will inherit this in this implementation."""
 
+    def __init__(self) -> None:
+        self.attributes = {}
+        self.methods = {}
+
 
 class Function(Object):
     def arg_count(self) -> int:
         raise NotImplementedError
 
-    def call(self, interpreter: Interpreter, args: list[Object]) -> Object:
-        raise NotImplementedError
+    def ensure_args(self, _: Interpreter, args: list[Object]) -> Object:
+        if len(args) != self.arg_count():
+            raise InterpreterError(
+                f"Function takes {self.arg_count()} arguments, {len(args)} given",
+            )
 
 
 class Return(Exception):
@@ -57,6 +66,8 @@ class UserFunction(Function):
         return len(self.definition.params)
 
     def call(self, interpreter: Interpreter, args: list[Object]) -> Object:
+        super().ensure_args(interpreter, args)
+
         parent_scope = interpreter.scope
 
         function_scope = Scope()
@@ -79,14 +90,58 @@ class UserFunction(Function):
 
 
 class Print(Function):
-    def as_string(self) -> None:
-        return self.value
-
     def arg_count(self) -> int:
         return mock.ANY
 
     def call(self, _: Interpreter, args: list[Object]) -> None:
         print(*[arg.as_string() for arg in args])
+
+
+class DequeConstructor(Function):
+    def arg_count(self) -> int:
+        return 0
+
+    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
+        super().ensure_args(interpreter, args)
+
+        return Deque()
+
+
+class Deque(Object):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self._data = deque()
+
+        self.methods["append"] = Append(self)
+        self.methods["popleft"] = PopLeft(self)
+
+
+class Append(Function):
+    def __init__(self, deque: Deque) -> None:
+        super().__init__()
+        self.deque = deque
+
+    def arg_count(self) -> int:
+        return 1
+
+    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
+        super().ensure_args(interpreter, args)
+        item = args[0]
+        self.deque._data.append(item)
+
+
+class PopLeft(Function):
+    def __init__(self, deque: Deque) -> None:
+        super().__init__()
+        self.deque = deque
+
+    def arg_count(self) -> int:
+        return 0
+
+    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
+        super().ensure_args(interpreter, args)
+        return self.deque._data.popleft()
 
 
 class Value(Object):
@@ -101,10 +156,11 @@ class Interpreter:
     def __init__(self) -> None:
         self.globals = Scope()
         self.globals.set("print", Print())
+        self.globals.set("deque", DequeConstructor())
 
         self.scope = self.globals
 
-    def visit(self, node: Node) -> Node | None:
+    def visit(self, node: Node) -> Object | None:
         node_type = type(node).__name__
         visitor_method = getattr(self, f"visit_{node_type}")
         return visitor_method(node)
@@ -138,6 +194,21 @@ class Interpreter:
 
         arguments = [self.visit(arg) for arg in node.args]
         return function.call(self, arguments)
+
+    def visit_Attribute(self, node: Attribute) -> Object:
+        attribute_name = node.attr
+        obj = self.visit(node.value)
+        assert obj is not None
+
+        if attribute_name in obj.attributes:
+            return obj.attributes[attribute_name]
+
+        elif attribute_name in obj.methods:
+            return obj.methods[attribute_name]
+
+        raise InterpreterError(
+            f"{type(obj).__name__} object has no attribute {attribute_name}"
+        )
 
     def visit_Name(self, node: Name) -> None:
         name = node.id

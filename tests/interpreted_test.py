@@ -1,11 +1,42 @@
 import subprocess
 import tempfile
 
+from textwrap import dedent
 
-def test_interpret() -> None:
+import pytest
+
+
+@pytest.mark.parametrize(
+    ("source", "output"),
+    (
+        ("print('hello!')\n", "hello!\n"),
+        (
+            """\
+            def foo(x):
+                y = 5
+                print(x, y)
+
+            foo("hi")
+            """,
+            "hi 5\n",
+        ),
+        (
+            """\
+            x = deque()
+            x.append(5)
+            x.append(6)
+            print(x.popleft())
+            y = x.popleft()
+            print(y)
+            """,
+            "5\n6\n",
+        ),
+    ),
+)
+def test_interpret(source, output) -> None:
     """Tests the interpreter CLI."""
-    with tempfile.NamedTemporaryFile() as file:
-        file.write(b"print('hello!')\n")
+    with tempfile.NamedTemporaryFile("w+") as file:
+        file.write(dedent(source))
         file.seek(0)
 
         process = subprocess.run(
@@ -15,7 +46,7 @@ def test_interpret() -> None:
             stderr=subprocess.PIPE,
         )
 
-    assert process.stdout == b"hello!\n"
+    assert process.stdout.decode() == output
     assert process.stderr == b""
 
 
