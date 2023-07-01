@@ -298,9 +298,11 @@ class Parser:
             return Continue()
 
         elif self.match_name("return"):
-            return_value = self.parse_expressions()
+            return_values = self.parse_expressions()
+            # TODO: make it a tuple if > 1
+            assert len(return_values) == 1
             self.expect(TokenType.NEWLINE)
-            return Return(value=return_value)
+            return Return(value=return_values[0])
 
         # Now here we come to a conundrum.
         # Assign expects `targets`, and ExprStmt expects `expressions`, and `targets`

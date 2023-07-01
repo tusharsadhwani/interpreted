@@ -8,13 +8,19 @@ from interpreted import nodes
 from interpreted.nodes import (
     Assign,
     Attribute,
+    AugAssign,
     Call,
+    Compare,
     Constant,
+    Dict,
     ExprStmt,
     FunctionDef,
+    If,
     Module,
     Name,
     Node,
+    Subscript,
+    While,
 )
 from interpreted.parser import parse
 
@@ -90,6 +96,14 @@ class Len(Function):
             return Value(len(item.value))
 
         raise InterpreterError(f"{type(item).__name__} has no len()")
+
+
+class Break(Exception):
+    """This is thrown when a loop breaks."""
+
+
+class Continue(Exception):
+    """This is thrown when a loop continues."""
 
 
 class Return(Exception):
@@ -186,7 +200,7 @@ class PopLeft(Function):
     def arg_count(self) -> int:
         return 0
 
-    def call(self, interpreter: Interpreter, args: list[Object]) -> None:
+    def call(self, _: Interpreter, args: list[Object]) -> None:
         super().ensure_args(args)
         return self.deque._data.popleft()
 
@@ -212,6 +226,13 @@ class List(Object):
         self._data = elements
 
         self.methods["append"] = Append(self)
+
+
+def is_truthy(obj: Object) -> bool:
+    if isinstance(obj, Value):
+        return bool(obj.value)
+
+    return True
 
 
 class Interpreter:
@@ -246,8 +267,92 @@ class Interpreter:
         else:
             raise NotImplementedError(target)  # TODO
 
+    def visit_AugAssign(self, node: AugAssign) -> None:
+        increment = self.visit(node.value)
+        assert isinstance(increment, Value)  # TODO: list +=
+
+        target = node.target
+        if isinstance(target, Name):
+            current_value = self.visit(target)
+            assert isinstance(current_value, Value)  # TODO: list +=
+            if node.op == "+=":
+                new_value = Value(current_value.value + increment.value)
+            else:
+                raise NotImplementedError(node)
+
+            self.scope.set(target.id, new_value)
+        else:
+            raise NotImplementedError(target)  # TODO
+
+    def visit_If(self, node: If) -> None:
+        if is_truthy(self.visit(node.condition)):
+            for stmt in node.body:
+                self.visit(stmt)
+
+    def visit_While(self, node: While) -> None:
+        while is_truthy(self.visit(node.condition)):
+            for stmt in node.body:
+                try:
+                    self.visit(stmt)
+                except Break:
+                    return
+                except Continue:
+                    continue
+
+    def visit_Break(self, node: nodes.Break) -> Break:
+        raise Break
+
+    def visit_Continue(self, node: nodes.Continue) -> Continue:
+        raise Continue
+
+    def visit_Return(self, node: nodes.Return) -> Return:
+        raise Return(self.visit(node.value))
+
     def visit_ExprStmt(self, node: ExprStmt) -> None:
         self.visit(node.value)
+
+    def visit_Compare(self, node: Compare) -> Value:
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if not isinstance(left, Value) or not isinstance(right, Value):
+            raise InterpreterError(
+                f"Cannot compare a {type(left).__name__}"
+                f" and a {type(right).__name__}"
+            )
+
+        if node.op == "==":
+            return Value(left.value == right.value)
+        if node.op == "!=":
+            return Value(left.value != right.value)
+        if node.op == "<":
+            return Value(left.value < right.value)
+        if node.op == ">":
+            return Value(left.value > right.value)
+        if node.op == "in":
+            return Value(left.value in right.value)
+
+        raise NotImplementedError(node)
+
+    def visit_BinOp(self, node) -> Object:
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+
+        if not isinstance(left, Value) or not isinstance(right, Value):
+            raise InterpreterError(
+                f"Cannot compare a {type(left).__name__}"
+                f" and a {type(right).__name__}"
+            )
+
+        if node.op == "+":
+            return Value(left.value + right.value)
+        if node.op == "-":
+            return Value(left.value - right.value)
+        if node.op == "*":
+            return Value(left.value * right.value)
+        if node.op == "//":
+            return Value(left.value / right.value)
+
+        raise NotImplementedError(node)
 
     def visit_Call(self, node: Call) -> Object:
         function = self.visit(node.function)
@@ -257,6 +362,23 @@ class Interpreter:
 
         arguments = [self.visit(arg) for arg in node.args]
         return function.call(self, arguments)
+
+    def visit_Subscript(self, node: Subscript) -> Object:
+        obj = self.visit(node.value)
+        assert obj is not None
+
+        key = self.visit(node.key)
+
+        if isinstance(obj, (List, Dict)) and key in obj._data:
+            return obj._data[key]
+        if (
+            isinstance(obj, Value)
+            and isinstance(obj.value, str)
+            and isinstance(key, Value)
+        ):
+            return Value(obj.value[key.value])
+
+        raise InterpreterError(f"{type(obj).__name__} object has no key {key!r}")
 
     def visit_Attribute(self, node: Attribute) -> Object:
         attribute_name = node.attr
@@ -270,10 +392,10 @@ class Interpreter:
             return obj.methods[attribute_name]
 
         raise InterpreterError(
-            f"{type(obj).__name__} object has no attribute {attribute_name}"
+            f"{type(obj).__name__} object has no attribute {attribute_name!r}"
         )
 
-    def visit_Name(self, node: Name) -> None:
+    def visit_Name(self, node: Name) -> Value:
         name = node.id
 
         value = self.scope.get(name)
@@ -287,6 +409,11 @@ class Interpreter:
     def visit_List(self, node: nodes.List) -> List:
         elements = [self.visit(element) for element in node.elements]
         return List(elements)
+
+    def visit_Dict(self, node: nodes.Dict) -> Dict:
+        keys = [self.visit(key) for key in node.keys]
+        values = [self.visit(key) for key in node.keys]
+        return Dict(keys, values)
 
     def visit_Constant(self, node: Constant) -> Value:
         return Value(node.value)
