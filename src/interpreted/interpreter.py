@@ -9,6 +9,8 @@ from interpreted.nodes import (
     Assign,
     Attribute,
     AugAssign,
+    BinOp,
+    BoolOp,
     Call,
     Compare,
     Constant,
@@ -20,6 +22,7 @@ from interpreted.nodes import (
     Node,
     Slice,
     Subscript,
+    UnaryOp,
     While,
 )
 from interpreted.parser import parse
@@ -160,9 +163,6 @@ class DequeConstructor(Function):
 
 
 class Deque(Object):
-    def as_string(self) -> str:
-        return f"<deque [" + ", ".join(item.as_string() for item in self._data) + "]>"
-
     def __init__(self) -> None:
         super().__init__()
 
@@ -170,6 +170,9 @@ class Deque(Object):
 
         self.methods["append"] = Append(self)
         self.methods["popleft"] = PopLeft(self)
+
+    def as_string(self) -> str:
+        return f"<deque [" + ", ".join(item.as_string() for item in self._data) + "]>"
 
 
 class Append(Function):
@@ -207,13 +210,74 @@ class PopLeft(Function):
 
 class Value(Object):
     def __init__(self, value: Any) -> None:
+        super().__init__()
         self.value = value
+        if isinstance(value, str):
+            self.methods["isdigit"] = IsDigit(self)
+            self.methods["isalpha"] = IsAlpha(self)
+            self.methods["join"] = Join(self)
+
+    def __eq__(self, other: Object) -> int:
+        if not isinstance(other, Value):
+            return False
+
+        return self.value == other.value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
     def __repr__(self) -> str:
         return f"Value({self.value!r})"
 
     def as_string(self) -> None:
         return str(self.value)
+
+
+class IsDigit(Function):
+    def __init__(self, wrapper: Value) -> None:
+        super().__init__()
+        self.wrapper = wrapper
+
+    def as_string(self) -> str:
+        return f"<method 'isdigit' of {self.wrapper.as_string()}>"
+
+    def arg_count(self) -> int:
+        return 0
+
+    def call(self, _: Interpreter, args: list[Object]) -> Value:
+        super().ensure_args(args)
+        return Value(self.wrapper.value.isdigit())
+
+
+class IsAlpha(Function):
+    def __init__(self, wrapper: Value) -> None:
+        super().__init__()
+        self.wrapper = wrapper
+
+    def as_string(self) -> str:
+        return f"<method 'isalpha' of {self.wrapper.as_string()}>"
+
+    def arg_count(self) -> int:
+        return 0
+
+    def call(self, _: Interpreter, args: list[Object]) -> Value:
+        super().ensure_args(args)
+        return Value(self.wrapper.value.isalpha())
+
+
+class Join(Function):
+    def __init__(self, wrapper: Value) -> None:
+        super().__init__()
+        self.wrapper = wrapper
+
+    def as_string(self) -> str:
+        return f"<method 'join' of {self.wrapper.as_string()}>"
+
+    def arg_count(self) -> int:
+        return mock.ANY
+
+    def call(self, _: Interpreter, args: list[Object]) -> Value:
+        return Value(self.wrapper.value.join(arg.as_string() for arg in args))
 
 
 class List(Object):
@@ -376,13 +440,13 @@ class Interpreter:
 
         raise NotImplementedError(node)
 
-    def visit_BinOp(self, node) -> Object:
+    def visit_BinOp(self, node: BinOp) -> Object:
         left = self.visit(node.left)
         right = self.visit(node.right)
 
         if not isinstance(left, Value) or not isinstance(right, Value):
             raise InterpreterError(
-                f"Cannot compare a {type(left).__name__}"
+                f"Cannot perform {node.op} on a {type(left).__name__}"
                 f" and a {type(right).__name__}"
             )
 
@@ -396,6 +460,33 @@ class Interpreter:
             return Value(left.value / right.value)
 
         raise NotImplementedError(node)
+
+    def visit_BoolOp(self, node: BoolOp) -> Object:
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+
+        if not isinstance(left, Value) or not isinstance(right, Value):
+            raise InterpreterError(
+                f"Cannot perform {node.op!r} on a {type(left).__name__!r}"
+                f" and a {type(right).__name__!r}"
+            )
+
+        if node.op == "and":
+            return Value(left.value and right.value)
+        if node.op == "or":
+            return Value(left.value or right.value)
+
+        raise AssertionError(f"node.op must be 'and' or 'or', found {node.op!r}")
+
+    def visit_UnaryOp(self, node: UnaryOp) -> Value:
+        left = self.visit(node.value)
+        if not isinstance(left, Value):
+            raise InterpreterError(f"Cannot negate a {type(left).__name__!r}")
+
+        if node.op == "not":
+            return Value(not node.value)
+
+        raise AssertionError(f"node.op must be 'not', found {node!r}")
 
     def visit_Call(self, node: Call) -> Object:
         function = self.visit(node.function)
@@ -428,9 +519,14 @@ class Interpreter:
                 raise NotImplementedError(node)
 
         key = self.visit(node.key)
-
-        if isinstance(obj, (List, Dict)) and key in obj._data:
-            return obj._data[key]
+        if isinstance(obj, (List, Deque)):
+            if not (isinstance(key, Value) and isinstance(key.value, int)):
+                raise InterpreterError(
+                    f"{type(obj).__name__} indices should be integers, got {key}"
+                )
+            return obj._data[key.value]
+        if isinstance(obj, Dict) and key in obj._dict:
+            return obj._dict[key]
         if (
             isinstance(obj, Value)
             and isinstance(obj.value, str)
@@ -438,7 +534,7 @@ class Interpreter:
         ):
             return Value(obj.value[key.value])
 
-        raise InterpreterError(f"{type(obj).__name__} object has no key {key!r}")
+        raise InterpreterError(f"{type(obj).__name__} object has no key {key}")
 
     def visit_Attribute(self, node: Attribute) -> Object:
         attribute_name = node.attr
