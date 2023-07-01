@@ -248,7 +248,7 @@ class Parser:
 
         orelse = []
         if self.match_name("elif"):
-            orelse = self.parse_if()
+            orelse = [self.parse_if()]
 
         elif self.match_name("else"):
             self.expect_op(":")

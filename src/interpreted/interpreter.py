@@ -288,6 +288,9 @@ class Interpreter:
         if is_truthy(self.visit(node.condition)):
             for stmt in node.body:
                 self.visit(stmt)
+        else:
+            for stmt in node.orelse:
+                self.visit(stmt)
 
     def visit_While(self, node: While) -> None:
         while is_truthy(self.visit(node.condition)):
@@ -298,6 +301,8 @@ class Interpreter:
                     return
                 except Continue:
                     continue
+
+        # TODO: else on while
 
     def visit_Break(self, node: nodes.Break) -> Break:
         raise Break
