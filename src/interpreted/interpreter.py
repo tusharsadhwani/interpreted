@@ -92,7 +92,7 @@ class Len(Function):
         super().ensure_args(args)
 
         item = args[0]
-        if isinstance(item, (List, Deque)):
+        if isinstance(item, (List, Tuple, Deque)):
             return Value(len(item._data))
 
         if isinstance(item, Value) and isinstance(item.value, str):
@@ -308,25 +308,34 @@ class Join(Function):
         return f"<method 'join' of {self.wrapper.as_string()}>"
 
     def arg_count(self) -> int:
-        return mock.ANY
+        return 1
 
     def call(self, _: Interpreter, args: list[Object]) -> Value:
-        return Value(self.wrapper.value.join(arg.as_string() for arg in args))
+        super().ensure_args(args)
+        items = args[0]
+        if not isinstance(items, (List, Tuple, Deque)):
+            raise InterpreterError(f"{type(items).__name__} object is not iterable")
+
+        return Value(self.wrapper.value.join(item.as_string() for item in items._data))
 
 
 class List(Object):
-    def __init__(self, elements=None) -> None:
+    def __init__(self, elements) -> None:
         super().__init__()
-
-        if elements is None:
-            elements = []
-
         self._data = elements
-
         self.methods["append"] = Append(self)
 
     def as_string(self) -> str:
         return "[" + ", ".join(item.as_string() for item in self._data) + "]"
+
+
+class Tuple(Object):
+    def __init__(self, elements) -> None:
+        super().__init__()
+        self._data = elements
+
+    def as_string(self) -> str:
+        return "(" + ", ".join(item.as_string() for item in self._data) + ")"
 
 
 class Dict(Object):
@@ -464,14 +473,16 @@ class Interpreter:
         rhs = self.visit(node.right)
         if isinstance(lhs, Value):
             left = lhs.value
-        elif isinstance(lhs, (List, Deque)):
+        elif isinstance(lhs, (List, Tuple, Deque)):
             left = lhs._data
+        elif isinstance(lhs, Dict):
+            left = lhs._dict
         else:
             raise NotImplementedError(lhs)
 
         if isinstance(rhs, Value):
             right = rhs.value
-        elif isinstance(rhs, (List, Deque)):
+        elif isinstance(rhs, (List, Tuple, Deque)):
             right = rhs._data
         else:
             raise NotImplementedError(rhs)
@@ -578,7 +589,7 @@ class Interpreter:
                 raise NotImplementedError(node)
 
         key = self.visit(node.key)
-        if isinstance(obj, (List, Deque)):
+        if isinstance(obj, (List, Tuple, Deque)):
             if not (isinstance(key, Value) and isinstance(key.value, int)):
                 raise InterpreterError(
                     f"{type(obj).__name__} indices should be integers, got {key.as_string()}"
@@ -626,6 +637,10 @@ class Interpreter:
     def visit_List(self, node: nodes.List) -> List:
         elements = [self.visit(element) for element in node.elements]
         return List(elements)
+
+    def visit_Tuple(self, node: nodes.Tuple) -> Tuple:
+        elements = [self.visit(element) for element in node.elements]
+        return Tuple(elements)
 
     def visit_Dict(self, node: nodes.Dict) -> Dict:
         keys = [self.visit(key) for key in node.keys]
