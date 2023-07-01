@@ -12,7 +12,6 @@ from interpreted.nodes import (
     Call,
     Compare,
     Constant,
-    Dict,
     ExprStmt,
     FunctionDef,
     If,
@@ -46,7 +45,7 @@ class Object:
         self.attributes = {}
         self.methods = {}
 
-    def as_string(self) -> None:
+    def as_string(self) -> str:
         raise NotImplementedError
 
 
@@ -209,14 +208,14 @@ class Value(Object):
     def __init__(self, value: Any) -> None:
         self.value = value
 
+    def __repr__(self) -> str:
+        return f"Value({self.value!r})"
+
     def as_string(self) -> None:
         return str(self.value)
 
 
 class List(Object):
-    def as_string(self) -> str:
-        return f"[" + ", ".join(item.as_string() for item in self._data) + "]"
-
     def __init__(self, elements=None) -> None:
         super().__init__()
 
@@ -226,6 +225,26 @@ class List(Object):
         self._data = elements
 
         self.methods["append"] = Append(self)
+
+    def as_string(self) -> str:
+        return "[" + ", ".join(item.as_string() for item in self._data) + "]"
+
+
+class Dict(Object):
+    def __init__(self, keys: list[Object], values: list[Object]) -> None:
+        super().__init__()
+
+        self._dict = {key: value for key, value in zip(keys, values, strict=True)}
+
+    def as_string(self) -> str:
+        return (
+            "{"
+            + ", ".join(
+                f"{key.as_string()}: {value.as_string()}"
+                for key, value in self._dict.items()
+            )
+            + "}"
+        )
 
 
 def is_truthy(obj: Object) -> bool:
@@ -300,7 +319,7 @@ class Interpreter:
                 except Break:
                     return
                 except Continue:
-                    continue
+                    break
 
         # TODO: else on while
 
@@ -317,24 +336,42 @@ class Interpreter:
         self.visit(node.value)
 
     def visit_Compare(self, node: Compare) -> Value:
-        left = self.visit(node.left)
-        right = self.visit(node.right)
-        if not isinstance(left, Value) or not isinstance(right, Value):
-            raise InterpreterError(
-                f"Cannot compare a {type(left).__name__}"
-                f" and a {type(right).__name__}"
-            )
+        lhs = self.visit(node.left)
+        rhs = self.visit(node.right)
+        if isinstance(lhs, Value):
+            left = lhs.value
+        elif isinstance(lhs, (List, Deque)):
+            left = lhs._data
+        else:
+            raise NotImplementedError(lhs)
+
+        if isinstance(rhs, Value):
+            right = rhs.value
+        elif isinstance(rhs, (List, Deque)):
+            right = rhs._data
+        else:
+            raise NotImplementedError(rhs)
 
         if node.op == "==":
-            return Value(left.value == right.value)
+            return Value(left == right)
         if node.op == "!=":
-            return Value(left.value != right.value)
+            return Value(left != right)
         if node.op == "<":
-            return Value(left.value < right.value)
+            return Value(left < right)
         if node.op == ">":
-            return Value(left.value > right.value)
+            return Value(left > right)
+        if node.op == "<=":
+            return Value(left <= right)
+        if node.op == ">=":
+            return Value(left >= right)
         if node.op == "in":
-            return Value(left.value in right.value)
+            return Value(left in right)
+        if node.op == "not in":
+            return Value(left not in right)
+        if node.op == "is":
+            return Value(left is right)
+        if node.op == "is not":
+            return Value(left is not right)
 
         raise NotImplementedError(node)
 
@@ -417,7 +454,7 @@ class Interpreter:
 
     def visit_Dict(self, node: nodes.Dict) -> Dict:
         keys = [self.visit(key) for key in node.keys]
-        values = [self.visit(key) for key in node.keys]
+        values = [self.visit(value) for value in node.values]
         return Dict(keys, values)
 
     def visit_Constant(self, node: Constant) -> Value:
