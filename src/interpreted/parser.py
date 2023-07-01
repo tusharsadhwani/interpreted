@@ -26,6 +26,7 @@ from interpreted.nodes import (
     Name,
     Pass,
     Return,
+    Slice,
     Statement,
     Subscript,
     Tuple,
@@ -473,9 +474,18 @@ class Parser:
                 primary = Attribute(value=primary, attr=attrname)
 
             elif self.match_op("["):
-                key = self.parse_expression()
+                keys = [self.parse_expression()]
+
+                # slice support
+                if self.match_op(":"):
+                    keys.append(self.parse_expression())
+
                 self.expect_op("]")
-                primary = Subscript(value=primary, key=key)
+                if len(keys) == 1:
+                    primary = Subscript(value=primary, key=keys[0])
+                else:
+                    key = Slice(start=keys[0], end=keys[1])
+                    primary = Subscript(value=primary, key=key)
 
             elif self.match_op("("):
                 # edge case: no args

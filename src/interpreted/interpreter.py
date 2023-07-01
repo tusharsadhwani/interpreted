@@ -18,6 +18,7 @@ from interpreted.nodes import (
     Module,
     Name,
     Node,
+    Slice,
     Subscript,
     While,
 )
@@ -408,6 +409,23 @@ class Interpreter:
     def visit_Subscript(self, node: Subscript) -> Object:
         obj = self.visit(node.value)
         assert obj is not None
+
+        if isinstance(node.key, Slice):
+            if isinstance(obj, Value) and isinstance(obj.value, str):
+                start = self.visit(node.key.start)
+                end = self.visit(node.key.end)
+                if not (
+                    isinstance(start, Value)
+                    and isinstance(start.value, int)
+                    and isinstance(end, Value)
+                    and isinstance(end.value, int)
+                ):
+                    raise InterpreterError(
+                        f"Slice indices should be integers, got {start.value}, {end.value}"
+                    )
+                return Value(obj.value[start.value : end.value])
+            else:
+                raise NotImplementedError(node)
 
         key = self.visit(node.key)
 

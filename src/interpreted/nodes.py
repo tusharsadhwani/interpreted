@@ -53,6 +53,12 @@ class Subscript(Expression):
     key: Expression
 
 
+@dataclass
+class Slice(Expression):
+    start: Expression
+    end: Expression
+
+
 Target: TypeAlias = Name | Attribute | Subscript
 
 

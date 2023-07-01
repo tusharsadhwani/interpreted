@@ -16,7 +16,7 @@ def extract_string(json_string, index, tokens):
 
         if char == '"':
             index += 1
-            string = json_string[slice(start, index)]
+            string = json_string[start:index]
             tokens.append({"value": string, "type": "string"})
 
             return index
@@ -53,7 +53,7 @@ def extract_number(json_string, index, tokens):
 
         index += 1
 
-    number = json_string[slice(start, index)]
+    number = json_string[start:index]
     tokens.append({"value": number, "type": "number"})
     return index
 
