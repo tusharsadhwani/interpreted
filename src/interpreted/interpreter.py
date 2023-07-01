@@ -515,12 +515,12 @@ class Interpreter:
         raise AssertionError(f"node.op must be 'and' or 'or', found {node.op!r}")
 
     def visit_UnaryOp(self, node: UnaryOp) -> Value:
-        left = self.visit(node.value)
-        if not isinstance(left, Value):
-            raise InterpreterError(f"Cannot negate a {type(left).__name__!r}")
+        value = self.visit(node.value)
+        if not isinstance(value, Value):
+            raise InterpreterError(f"Cannot negate a {type(value).__name__!r}")
 
         if node.op == "not":
-            return Value(not node.value)
+            return Value(not value.value)
 
         raise AssertionError(f"node.op must be 'not', found {node!r}")
 
