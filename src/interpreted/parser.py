@@ -1,4 +1,5 @@
 from __future__ import annotations
+import ast
 from keyword import iskeyword
 
 import sys
@@ -527,7 +528,9 @@ class Parser:
 
         if self.match_type(TokenType.STRING):
             token = self.current()
-            return Constant(unquote(token.string))
+            unquoted_unescaped_string = ast.literal_eval(token.string)
+            assert isinstance(unquoted_unescaped_string, str)
+            return Constant(unquoted_unescaped_string)
 
         if self.match_op("("):
             # special_case: no items
@@ -572,26 +575,6 @@ def assert_expressions_are_targets(expressions: list[Expression], index) -> None
         if not isinstance(target, (Name, Subscript)):
             node_type = type(target).__name__
             raise ParseError(f"Cannot assign to a {node_type}", index)
-
-
-def unquote(string: str) -> str:
-    if string.startswith('"""'):
-        assert string.endswith('"""')
-        return string[3:-3]
-
-    if string.startswith("'''"):
-        assert string.endswith("'''")
-        return string[3:-3]
-
-    if string.startswith('"'):
-        assert string.endswith('"')
-        return string[1:-1]
-
-    if string.startswith("'"):
-        assert string.endswith("'")
-        return string[1:-1]
-
-    raise ValueError(f"Unknown string format: {string}")
 
 
 def parse(source: str) -> Module | None:

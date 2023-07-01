@@ -184,7 +184,7 @@ class UserFunction(Function):
         finally:
             interpreter.scope = parent_scope
 
-        return None
+        return Value(None)
 
 
 class DequeConstructor(Function):

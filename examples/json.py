@@ -301,3 +301,4 @@ def parse(json_string):
 
 
 print(parse('{"foo": 1}'))
+print(parse('{"foo": [1, 2, 3, null]}'))
