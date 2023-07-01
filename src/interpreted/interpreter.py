@@ -101,6 +101,40 @@ class Len(Function):
         raise InterpreterError(f"{type(item).__name__} has no len()")
 
 
+class Int(Function):
+    def as_string(self) -> str:
+        return "<function 'int'>"
+
+    def arg_count(self) -> int:
+        return 1
+
+    def call(self, _: Interpreter, args: list[Object]) -> Object:
+        super().ensure_args(args)
+
+        item = args[0]
+        if isinstance(item, Value) and isinstance(item.value, (int, str, float)):
+            return Value(int(item.value))
+
+        raise InterpreterError(f"Invalid type for int(): {type(item).__name__}")
+
+
+class Float(Function):
+    def as_string(self) -> str:
+        return "<function 'float'>"
+
+    def arg_count(self) -> int:
+        return 1
+
+    def call(self, _: Interpreter, args: list[Object]) -> Object:
+        super().ensure_args(args)
+
+        item = args[0]
+        if isinstance(item, Value) and isinstance(item.value, (int, str, float)):
+            return Value(float(item.value))
+
+        raise InterpreterError(f"Invalid type for float(): {type(item).__name__}")
+
+
 class Break(Exception):
     """This is thrown when a loop breaks."""
 
@@ -324,6 +358,8 @@ class Interpreter:
         self.globals = Scope()
         self.globals.set("print", Print())
         self.globals.set("len", Len())
+        self.globals.set("int", Int())
+        self.globals.set("float", Float())
         self.globals.set("deque", DequeConstructor())
 
         self.scope = self.globals
