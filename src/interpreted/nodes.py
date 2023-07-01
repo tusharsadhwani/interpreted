@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-BINOP: TypeAlias = Literal["+", "-", "*", "/", "**", "~", "@", "%", "^", "&"]
-AUGOP: TypeAlias = Literal["+=", "-=", "*=", "/=", "**=", "~=", "@=", "%=", "^=", "&="]
+BINOP: TypeAlias = Literal["+", "-", "*", "/", "**", "@", "%", "^", "&"]
+AUGOP: TypeAlias = Literal["+=", "-=", "*=", "/=", "**=", "@=", "%=", "^=", "&="]
 
 
 @dataclass
