@@ -384,6 +384,29 @@ class Interpreter:
 
         if isinstance(target, Name):
             self.scope.set(target.id, value)
+
+        elif isinstance(target, Subscript):
+            obj = self.visit(target.value)
+
+            if isinstance(obj, (List, Deque)):
+                key = self.visit(target.key)
+                if not (isinstance(key, Value) and isinstance(key.value, int)):
+                    raise InterpreterError(
+                        f"Expected integer index for {type(obj).__name__},"
+                        f" got {key.as_string()}"
+                    )
+
+                obj._data[key.value] = value
+
+            elif isinstance(obj, Dict):
+                key = self.visit(target.key)
+                obj._dict[key] = value
+
+            else:
+                raise InterpreterError(
+                    f"Index not implemented for {type(obj).__name__}"
+                )
+
         else:
             raise NotImplementedError(target)  # TODO
 
@@ -548,7 +571,7 @@ class Interpreter:
                     and isinstance(end.value, int)
                 ):
                     raise InterpreterError(
-                        f"Slice indices should be integers, got {start.value}, {end.value}"
+                        f"Slice indices should be integers, got {start.as_string()}, {end.as_string()}"
                     )
                 return Value(obj.value[start.value : end.value])
             else:
@@ -558,7 +581,7 @@ class Interpreter:
         if isinstance(obj, (List, Deque)):
             if not (isinstance(key, Value) and isinstance(key.value, int)):
                 raise InterpreterError(
-                    f"{type(obj).__name__} indices should be integers, got {key}"
+                    f"{type(obj).__name__} indices should be integers, got {key.as_string()}"
                 )
             return obj._data[key.value]
         if isinstance(obj, Dict) and key in obj._dict:
@@ -570,7 +593,9 @@ class Interpreter:
         ):
             return Value(obj.value[key.value])
 
-        raise InterpreterError(f"{type(obj).__name__} object has no key {key}")
+        raise InterpreterError(
+            f"{type(obj).__name__} object has no key {key.as_string()}"
+        )
 
     def visit_Attribute(self, node: Attribute) -> Object:
         attribute_name = node.attr
