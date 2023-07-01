@@ -412,20 +412,21 @@ class Parser:
         while True:
             if self.match_op("<", ">", "<=", ">=", "==", "!="):
                 operator = self.current().string
-            elif self.match_name("in", "is"):
-                operator = self.current().string
             elif self.peek().string == "is" and self.peek_next().string == "not":
                 self.advance()
-                self.advance()
                 operator = self.current().string
+                self.advance()
+                operator = operator + " " + self.current().string
             elif self.peek().string == "not" and self.peek_next().string == "in":
                 self.advance()
+                operator = self.current().string
                 self.advance()
+                operator = operator + " " + self.current().string
+            elif self.match_name("in", "is"):
                 operator = self.current().string
             else:
                 break
 
-            operator = self.current().string
             right = self.parse_sum()
             left = Compare(left=left, op=operator, right=right)
 

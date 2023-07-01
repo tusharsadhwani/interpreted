@@ -483,14 +483,16 @@ class Interpreter:
         elif isinstance(lhs, Dict):
             left = lhs._dict
         else:
-            raise NotImplementedError(lhs)
+            raise InterpreterError(f"Cannot do {lhs.repr()} {node.op!r} {rhs.repr()}")
 
         if isinstance(rhs, Value):
             right = rhs.value
         elif isinstance(rhs, (List, Tuple, Deque)):
             right = rhs._data
+        elif isinstance(lhs, Dict):
+            left = lhs._dict
         else:
-            raise NotImplementedError(rhs)
+            raise InterpreterError(f"Cannot do {lhs.repr()} {node.op!r} {rhs,repr()}")
 
         if node.op == "==":
             return Value(left == right)
@@ -505,9 +507,25 @@ class Interpreter:
         if node.op == ">=":
             return Value(left >= right)
         if node.op == "in":
-            return Value(left in right)
+            if isinstance(right, str):
+                return Value(left in right)
+            elif isinstance(right, (list, tuple, deque)):
+                return Value(
+                    any(
+                        isinstance(element, Value) and element.value == left
+                        for element in right
+                    )
+                )
         if node.op == "not in":
-            return Value(left not in right)
+            if isinstance(right, str):
+                return Value(left not in right)
+            elif isinstance(right, (list, tuple, deque)):
+                return Value(
+                    not any(
+                        isinstance(element, Value) and element.value == left
+                        for element in right
+                    )
+                )
         if node.op == "is":
             return Value(left is right)
         if node.op == "is not":

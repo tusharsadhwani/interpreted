@@ -300,5 +300,4 @@ def parse(json_string):
     return value
 
 
-print(parse('{"foo": 1}'))
-print(parse('{"foo": [1, 2, 3, null]}'))
+print(parse('{"foo": [1, 2, 3, {"bar": [true, false, null]}]}'))
