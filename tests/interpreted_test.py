@@ -41,7 +41,7 @@ import pytest
             y = ["foo", 10, "bar"]
             print(y, len(y))
             """,
-            "[5, 6] 2\n[foo, 10, bar] 3\n",
+            "[5, 6] 2\n['foo', 10, 'bar'] 3\n",
         ),
     ),
 )

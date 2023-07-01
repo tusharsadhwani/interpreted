@@ -52,6 +52,9 @@ class Object:
     def as_string(self) -> str:
         raise NotImplementedError
 
+    def repr(self) -> str:
+        return self.as_string()
+
 
 class Function(Object):
     def as_string(self) -> str:
@@ -63,7 +66,7 @@ class Function(Object):
     def ensure_args(self, args: list[Object]) -> Object:
         if len(args) != self.arg_count():
             raise InterpreterError(
-                f"{self.as_string()} takes {self.arg_count()} arguments, {len(args)} given",
+                f"{self.repr()} takes {self.arg_count()} arguments, {len(args)} given",
             )
 
     def call(self, interpreter: Interpreter, args: list[Object]) -> None:
@@ -206,7 +209,7 @@ class Deque(Object):
         self.methods["popleft"] = PopLeft(self)
 
     def as_string(self) -> str:
-        return f"<deque [" + ", ".join(item.as_string() for item in self._data) + "]>"
+        return f"<deque [" + ", ".join(item.repr() for item in self._data) + "]>"
 
 
 class Append(Function):
@@ -215,7 +218,7 @@ class Append(Function):
         self.wrapper = wrapper
 
     def as_string(self) -> str:
-        return f"<method 'append' of {self.wrapper.as_string()}>"
+        return f"<method 'append' of {self.wrapper.repr()}>"
 
     def arg_count(self) -> int:
         return 1
@@ -232,7 +235,7 @@ class PopLeft(Function):
         self.deque = deque
 
     def as_string(self) -> str:
-        return f"<method 'popleft' of {self.deque.as_string()}>"
+        return f"<method 'popleft' of {self.deque.repr()}>"
 
     def arg_count(self) -> int:
         return 0
@@ -266,6 +269,9 @@ class Value(Object):
     def as_string(self) -> None:
         return str(self.value)
 
+    def repr(self) -> None:
+        return repr(self.value)
+
 
 class IsDigit(Function):
     def __init__(self, wrapper: Value) -> None:
@@ -273,7 +279,7 @@ class IsDigit(Function):
         self.wrapper = wrapper
 
     def as_string(self) -> str:
-        return f"<method 'isdigit' of {self.wrapper.as_string()}>"
+        return f"<method 'isdigit' of {self.wrapper.repr()}>"
 
     def arg_count(self) -> int:
         return 0
@@ -289,7 +295,7 @@ class IsAlpha(Function):
         self.wrapper = wrapper
 
     def as_string(self) -> str:
-        return f"<method 'isalpha' of {self.wrapper.as_string()}>"
+        return f"<method 'isalpha' of {self.wrapper.repr()}>"
 
     def arg_count(self) -> int:
         return 0
@@ -305,7 +311,7 @@ class Join(Function):
         self.wrapper = wrapper
 
     def as_string(self) -> str:
-        return f"<method 'join' of {self.wrapper.as_string()}>"
+        return f"<method 'join' of {self.wrapper.repr()}>"
 
     def arg_count(self) -> int:
         return 1
@@ -326,7 +332,7 @@ class List(Object):
         self.methods["append"] = Append(self)
 
     def as_string(self) -> str:
-        return "[" + ", ".join(item.as_string() for item in self._data) + "]"
+        return "[" + ", ".join(item.repr() for item in self._data) + "]"
 
 
 class Tuple(Object):
@@ -335,7 +341,7 @@ class Tuple(Object):
         self._data = elements
 
     def as_string(self) -> str:
-        return "(" + ", ".join(item.as_string() for item in self._data) + ")"
+        return "(" + ", ".join(item.repr() for item in self._data) + ")"
 
 
 class Dict(Object):
@@ -348,8 +354,7 @@ class Dict(Object):
         return (
             "{"
             + ", ".join(
-                f"{key.as_string()}: {value.as_string()}"
-                for key, value in self._dict.items()
+                f"{key.repr()}: {value.repr()}" for key, value in self._dict.items()
             )
             + "}"
         )
@@ -402,7 +407,7 @@ class Interpreter:
                 if not (isinstance(key, Value) and isinstance(key.value, int)):
                     raise InterpreterError(
                         f"Expected integer index for {type(obj).__name__},"
-                        f" got {key.as_string()}"
+                        f" got {key.repr()}"
                     )
 
                 obj._data[key.value] = value
@@ -582,7 +587,7 @@ class Interpreter:
                     and isinstance(end.value, int)
                 ):
                     raise InterpreterError(
-                        f"Slice indices should be integers, got {start.as_string()}, {end.as_string()}"
+                        f"Slice indices should be integers, got {start.repr()}, {end.repr()}"
                     )
                 return Value(obj.value[start.value : end.value])
             else:
@@ -592,7 +597,7 @@ class Interpreter:
         if isinstance(obj, (List, Tuple, Deque)):
             if not (isinstance(key, Value) and isinstance(key.value, int)):
                 raise InterpreterError(
-                    f"{type(obj).__name__} indices should be integers, got {key.as_string()}"
+                    f"{type(obj).__name__} indices should be integers, got {key.repr()}"
                 )
             return obj._data[key.value]
         if isinstance(obj, Dict) and key in obj._dict:
@@ -604,9 +609,7 @@ class Interpreter:
         ):
             return Value(obj.value[key.value])
 
-        raise InterpreterError(
-            f"{type(obj).__name__} object has no key {key.as_string()}"
-        )
+        raise InterpreterError(f"{type(obj).__name__} object has no key {key.repr()}")
 
     def visit_Attribute(self, node: Attribute) -> Object:
         attribute_name = node.attr
