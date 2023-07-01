@@ -497,18 +497,16 @@ class Parser:
             token = self.current()
             if token.string in ("True", "False", "None") or not iskeyword(token.string):
                 if token.string == "True":
-                    value = True
-                elif token.string == "False":
-                    value = False
-                elif token.string == "None":
-                    value = None
-                else:
-                    value = token.string
+                    return Constant(True)
+                if token.string == "False":
+                    return Constant(False)
+                if token.string == "None":
+                    return Constant(None)
 
-                return Name(value)
+                return Name(token.string)
 
             else:
-                raise ParseError(f"Unexpected token {token.string!r}", self.index - 1)
+                raise ParseError(f"Unexpected keyword {token.string!r}", self.index - 1)
 
         if self.match_type(TokenType.NUMBER):
             token = self.current()
