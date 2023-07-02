@@ -300,4 +300,59 @@ def parse(json_string):
     return value
 
 
+print(
+    parse(
+        """
+        {
+            "results": [
+                {
+                "gender": "male",
+                "name": { "title": "Mr", "first": "سینا", "last": "موسوی" },
+                "location": {
+                    "street": { "number": 8134, "name": "میدان امام حسین" },
+                    "city": "ارومیه",
+                    "state": "خوزستان",
+                    "country": "Iran",
+                    "postcode": 24340,
+                    "coordinates": { "latitude": "27.3083", "longitude": "-104.2564" },
+                    "timezone": {
+                    "offset": "0:00",
+                    "description": "Western Europe Time, London, Lisbon, Casablanca"
+                    }
+                },
+                "email": "syn.mwswy@example.com",
+                "login": {
+                    "uuid": "8a6da152-019a-40b4-80b0-bfafd5281fd7",
+                    "username": "sadbear764",
+                    "password": "1947",
+                    "salt": "ddKNbUrc",
+                    "md5": "7ff0c750f9b8d7690d50385754a7fe25",
+                    "sha1": "e140544e222f27a2d0aa809ccb00a1d1ca1fda60",
+                    "sha256": "fd5dbd61da24a82f48971a6d027400a2fd5b0808fd108764f17d87aaa61774d9"
+                },
+                "dob": { "date": "1996-12-06T21:55:10.574Z", "age": 24 },
+                "registered": { "date": "2013-04-07T05:56:17.049Z", "age": 7 },
+                "phone": "083-15098477",
+                "cell": "0998-569-1505",
+                "id": { "name": "", "value": null },
+                "picture": {
+                    "large": "https://randomuser.me/api/portraits/men/94.jpg",
+                    "medium": "https://randomuser.me/api/portraits/med/men/94.jpg",
+                    "thumbnail": "https://randomuser.me/api/portraits/thumb/men/94.jpg"
+                },
+                "nat": "IR"
+                }
+            ],
+            "info": {
+                "seed": "db5d8d673b395e5a",
+                "results": 1,
+                "page": 1,
+                "version": "1.3"
+            }
+        }
+        """
+    )
+)
+
+# smaller example
 print(parse('{"foo": [1, 2, 3, {"bar": [true, false, null]}]}'))
