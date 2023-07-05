@@ -578,8 +578,12 @@ class Interpreter:
 
         if node.op == "not":
             return Value(not value.value)
+        elif node.op == "+":
+            return value
+        elif node.op == "-":
+            return Value(-value.value)
 
-        raise AssertionError(f"node.op must be 'not', found {node!r}")
+        raise AssertionError(f"node.op must be '+', '-', or 'not', found {node!r}")
 
     def visit_Call(self, node: Call) -> Object:
         function = self.visit(node.function)

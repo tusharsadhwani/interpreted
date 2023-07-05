@@ -48,10 +48,10 @@ import pytest
             x = "abc"
             print(x[:1])
             print(x[1:])
-            # print(x[:-1])
+            print(x[:-1])
             print(x[:])
             """,
-            "a\nbc\nabc\n",
+            "a\nbc\nab\nabc\n",
         ),
     ),
 )

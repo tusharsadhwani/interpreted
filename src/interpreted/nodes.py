@@ -90,7 +90,7 @@ class BoolOp(Expression):
 @dataclass
 class UnaryOp(Expression):
     value: Expression
-    op: Literal["not"]
+    op: Literal["+", "-", "not"]
 
 
 @dataclass
