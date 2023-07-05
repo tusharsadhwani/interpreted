@@ -486,7 +486,7 @@ class Parser:
 
                     else:
                         # slice support part 2: no first arg but yes second arg
-                        keys.append(Constant(0))
+                        keys.append(Constant(None))
                         keys.append(self.parse_expression())
                         self.expect_op("]")
 
