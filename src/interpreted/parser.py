@@ -476,13 +476,33 @@ class Parser:
                 primary = Attribute(value=primary, attr=attrname)
 
             elif self.match_op("["):
-                keys = [self.parse_expression()]
+                keys = []
 
-                # slice support
+                # slice support part 1: [:] support
                 if self.match_op(":"):
-                    keys.append(self.parse_expression())
+                    if self.match_op("]"):
+                        keys.append(Constant(None))
+                        keys.append(Constant(None))
 
-                self.expect_op("]")
+                    else:
+                        # slice support part 2: no first arg but yes second arg
+                        keys.append(Constant(0))
+                        keys.append(self.parse_expression())
+                        self.expect_op("]")
+
+                else:
+                    key = self.parse_expression()
+                    # slice support part 3: first arg but no second arg
+                    if self.match_op(":"):
+                        keys.append(key)
+                        keys.append(Constant(None))
+
+                    else:
+                        # normal, non slice case
+                        keys.append(key)
+
+                    self.expect_op("]")
+
                 if len(keys) == 1:
                     primary = Subscript(value=primary, key=keys[0])
                 else:

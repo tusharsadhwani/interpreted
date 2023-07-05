@@ -600,12 +600,12 @@ class Interpreter:
                 end = self.visit(node.key.end)
                 if not (
                     isinstance(start, Value)
-                    and isinstance(start.value, int)
                     and isinstance(end, Value)
-                    and isinstance(end.value, int)
+                    and (start.value is None or isinstance(start.value, int))
+                    and (end.value is None or isinstance(end.value, int))
                 ):
                     raise InterpreterError(
-                        f"Slice indices should be integers, got {start.repr()}, {end.repr()}"
+                        f"Slice indices should be integers or 'None', got {start.repr()}, {end.repr()}"
                     )
                 return Value(obj.value[start.value : end.value])
             else:

@@ -43,6 +43,16 @@ import pytest
             """,
             "[5, 6] 2\n['foo', 10, 'bar'] 3\n",
         ),
+        (
+            """\
+            x = "abc"
+            print(x[:1])
+            print(x[1:])
+            # print(x[:-1])
+            print(x[:])
+            """,
+            "a\nbc\nabc\n",
+        ),
     ),
 )
 def test_interpret(source, output) -> None:
