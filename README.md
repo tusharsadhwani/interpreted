@@ -3,7 +3,7 @@
 A Python interpreter, written from scratch in Python.
 
 This interpreter is made solely as the base for my talk,
-"Writing a Python interpreter from scratch, in half an hour."
+"[Writing a Python interpreter from scratch, in half an hour.](https://ep2023.europython.eu/session/writing-a-python-interpreter-from-scratch-in-half-an-hour)"
 
 ## Installation
 
@@ -18,7 +18,7 @@ $ cat foo.py
 print("2 + 2 is", 2 + 2)
 
 def greet(name='User'):
-	print('Hello,', name + '!')
+    print('Hello,', name + '!')
 
 greet()
 
