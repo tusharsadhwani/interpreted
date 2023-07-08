@@ -2,7 +2,7 @@ def extract_string(json_string, index, tokens):
     """Extracts a single string token from JSON string"""
     start = index
     end = len(json_string)
-    index += 1
+    index += 1  # skip over the starting `"`
 
     while index < end:
         char = json_string[index]
@@ -11,7 +11,7 @@ def extract_string(json_string, index, tokens):
             if index + 1 == end:
                 return None
 
-            index += 2
+            index += 2  # skip over escaped characters like `\"`
             continue
 
         if char == '"':
@@ -94,24 +94,12 @@ def tokenize(json_string):
         char = json_string[index]
 
         if char in " \n\t":
+            # whitespace is ignored
             index += 1
             continue
 
         if char in "[]{},:":
-            if char == "[":
-                type = "left_bracket"
-            elif char == "]":
-                type = "right_bracket"
-            elif char == "{":
-                type = "left_brace"
-            elif char == "}":
-                type = "right_brace"
-            elif char == ",":
-                type = "comma"
-            else:
-                type = "colon"
-
-            token = {"value": char, "type": type}
+            token = {"value": char, "type": "operator"}
             tokens.append(token)
             index += 1
             continue
@@ -139,7 +127,7 @@ def parse_object(tokens):
     obj = {}
 
     # special case:
-    if tokens[0]["type"] == "right_brace":
+    if tokens[0]["value"] == "{":
         tokens.popleft()
         return obj
 
@@ -155,14 +143,14 @@ def parse_object(tokens):
             return None
 
         token = tokens.popleft()
-        if token["type"] != "colon":
+        if token["value"] != ":":
             return None
 
         # Missing value for key
         if len(tokens) == 0:
             return None
 
-        if tokens[0]["type"] == "right_brace":
+        if tokens[0]["value"] == "}":
             token = tokens[0]
             return None
 
@@ -173,17 +161,17 @@ def parse_object(tokens):
             return None
 
         token = tokens.popleft()
-        if token["type"] not in ("comma", "right_brace"):
+        if token["value"] not in (",", "}"):
             return None
 
-        if token["type"] == "right_brace":
+        if token["value"] == "}":
             break
 
         # Trailing comma checks
         if len(tokens) == 0:
             return None
 
-        if tokens[0]["type"] == "right_brace":
+        if tokens[0]["value"] == "}":
             return None
 
     return obj
@@ -194,7 +182,7 @@ def parse_array(tokens):
     array = []
 
     # special case:
-    if tokens[0]["type"] == "right_bracket":
+    if tokens[0]["value"] == "}":
         tokens.popleft()
         return array
 
@@ -203,17 +191,17 @@ def parse_array(tokens):
         array.append(value)
 
         token = tokens.popleft()
-        if token["type"] not in ("comma", "right_bracket"):
+        if token["value"] not in (",", "]"):
             return None
 
-        if token["type"] == "right_bracket":
+        if token["value"] == "]":
             break
 
         # trailing comma check
         if len(tokens) == 0:
             return None
 
-        if tokens[0]["type"] == "right_bracket":
+        if tokens[0]["value"] == "]":
             return None
 
     return array
@@ -269,10 +257,10 @@ def _parse(tokens):
     """Recursive JSON parse implementation"""
     token = tokens.popleft()
 
-    if token["type"] == "left_bracket":
+    if token["value"] == "[":
         return parse_array(tokens)
 
-    if token["type"] == "left_brace":
+    if token["value"] == "{":
         return parse_object(tokens)
 
     if token["type"] == "string":
@@ -281,9 +269,10 @@ def _parse(tokens):
     if token["type"] == "number":
         return parse_number(token)
 
+    value = token["value"]
     special_tokens = {"true": True, "false": False, "null": None}
-    if token["type"] in ("boolean", "null"):
-        return special_tokens[token["value"]]
+    if value in special_tokens:
+        return special_tokens[value]
 
 
 def parse(json_string):
