@@ -151,7 +151,6 @@ def parse_object(tokens):
             return None
 
         if tokens[0]["value"] == "}":
-            token = tokens[0]
             return None
 
         value = _parse(tokens)
