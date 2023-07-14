@@ -50,8 +50,9 @@ import pytest
             print(x[1:])
             print(x[:-1])
             print(x[:])
+            print(x[1:2])
             """,
-            "a\nbc\nab\nabc\n",
+            "a\nbc\nab\nabc\nb\n",
         ),
     ),
 )

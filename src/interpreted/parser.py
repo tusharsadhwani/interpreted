@@ -492,16 +492,19 @@ class Parser:
 
                 else:
                     key = self.parse_expression()
-                    # slice support part 3: first arg but no second arg
                     if self.match_op(":"):
                         keys.append(key)
-                        keys.append(Constant(None))
-
+                        # slice support part 3: first arg but no second arg
+                        if self.match_op("]"):
+                            keys.append(Constant(None))
+                        else:
+                            key = self.parse_expression()
+                            keys.append(key)
+                            self.expect_op("]")
                     else:
                         # normal, non slice case
                         keys.append(key)
-
-                    self.expect_op("]")
+                        self.expect_op("]")
 
                 if len(keys) == 1:
                     primary = Subscript(value=primary, key=keys[0])
