@@ -127,7 +127,7 @@ def parse_object(tokens):
     obj = {}
 
     # special case:
-    if tokens[0]["value"] == "{":
+    if tokens[0]["value"] == "}":
         tokens.popleft()
         return obj
 
