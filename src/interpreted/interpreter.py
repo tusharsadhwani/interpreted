@@ -489,10 +489,10 @@ class Interpreter:
             right = rhs.value
         elif isinstance(rhs, (List, Tuple, Deque)):
             right = rhs._data
-        elif isinstance(lhs, Dict):
-            left = lhs._dict
+        elif isinstance(rhs, Dict):
+            right = rhs._dict
         else:
-            raise InterpreterError(f"Cannot do {lhs.repr()} {node.op!r} {rhs,repr()}")
+            raise InterpreterError(f"Cannot do {lhs.repr()} {node.op!r} {rhs.repr()}")
 
         if node.op == "==":
             return Value(left == right)
@@ -509,7 +509,7 @@ class Interpreter:
         if node.op == "in":
             if isinstance(right, str):
                 return Value(left in right)
-            elif isinstance(right, (list, tuple, deque)):
+            elif isinstance(right, (list, tuple, deque, dict)):
                 return Value(
                     any(
                         isinstance(element, Value) and element.value == left
