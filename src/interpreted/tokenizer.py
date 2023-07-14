@@ -186,8 +186,6 @@ class Tokenizer:
             self.indents.pop()
             self.add_token(TokenType.DEDENT)
 
-        current_indent = indent
-
     def scan_comment(self) -> None:
         """Reads and discards a comment. A comment goes on till a newline."""
         while not self.scanned and self.peek() != "\n":
