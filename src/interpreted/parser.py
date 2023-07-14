@@ -240,13 +240,13 @@ class Parser:
                 # TODO: trailing comma support
 
         self.expect_op(":")
-        body = self.parse_body()
+        body = self.parse_block()
         return FunctionDef(name=function_name, params=params, body=body)
 
     def parse_if(self) -> If:
         condition = self.parse_expression()
         self.expect_op(":")
-        body = self.parse_body()
+        body = self.parse_block()
 
         orelse = []
         if self.match_name("elif"):
@@ -254,7 +254,7 @@ class Parser:
 
         elif self.match_name("else"):
             self.expect_op(":")
-            orelse = self.parse_body()
+            orelse = self.parse_block()
 
         return If(condition=condition, body=body, orelse=orelse)
 
@@ -262,16 +262,16 @@ class Parser:
         condition = self.parse_expression()
         self.expect_op(":")
 
-        body = self.parse_body()
+        body = self.parse_block()
 
         orelse = []
         if self.match_name("else"):
             self.expect_op(":")
-            orelse = self.parse_body()
+            orelse = self.parse_block()
 
         return While(condition=condition, body=body, orelse=orelse)
 
-    def parse_body(self) -> list[Statement]:
+    def parse_block(self) -> list[Statement]:
         self.expect(TokenType.NEWLINE)
         self.expect(TokenType.INDENT)
 
