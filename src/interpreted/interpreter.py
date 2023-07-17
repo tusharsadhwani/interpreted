@@ -470,6 +470,9 @@ class Interpreter:
     def visit_Return(self, node: nodes.Return) -> Return:
         raise Return(self.visit(node.value))
 
+    def visit_Pass(self, node: nodes.Pass) -> None:
+        pass  # :)
+
     def visit_ExprStmt(self, node: ExprStmt) -> None:
         self.visit(node.value)
 
