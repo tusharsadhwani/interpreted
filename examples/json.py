@@ -344,3 +344,5 @@ print(parse('{"foo": [1, 2, 3, {"bar": [true, false, null]}]}'))
 #         """
 #     )
 # )
+
+print("It works!")
