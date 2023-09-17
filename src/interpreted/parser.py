@@ -1,9 +1,10 @@
 from __future__ import annotations
-
 import ast
-import sys
 from keyword import iskeyword
 
+import sys
+
+from interpreted.tokenizer import Token, TokenType, index_to_line_column, tokenize
 from interpreted.nodes import (
     Assign,
     Attribute,
@@ -16,8 +17,8 @@ from interpreted.nodes import (
     Constant,
     Continue,
     Dict,
-    Expression,
     ExprStmt,
+    Expression,
     For,
     FunctionDef,
     If,
@@ -32,8 +33,10 @@ from interpreted.nodes import (
     Tuple,
     UnaryOp,
     While,
+    Import,
+    ImportFrom,
+    alias,
 )
-from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
 
 
 class ParseError(Exception):
@@ -59,7 +62,10 @@ class Parser:
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' expressions ':' block else?
         targets -> primary (',' primary)* ','?
-        single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt
+        single_line_stmt -> Import | ImportFrom | Pass | Break | Continue | Return | Assign | ExprStmt
+        Import -> 'import' module ('as' alias)? (',' module ('as' alias)? )* '\n'
+        ImportFrom -> 'from' module 'import' NAME ('as' alias)? (',' NAME 'as' alias)? '\n'
+        module -> NAME ('.' NAME)*
         Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
         expressions -> expression (',' expression)* ','?
@@ -116,33 +122,47 @@ class Parser:
     def advance(self) -> None:
         self.index += 1
 
-    def current(self) -> Token:
+    def current(self) -> Token | None:
         if self.parsed:
-            return EOF
+            return None
 
         return self.tokens[self.index - 1]
 
-    def peek(self) -> Token:
+    def peek(self) -> Token | None:
         if self.parsed:
-            return EOF
+            return None
 
         return self.tokens[self.index]
 
-    def peek_next(self) -> Token:
+    def peek_endl(self) -> Token | None:
         if self.index + 1 >= len(self.tokens):
-            return EOF
+            return None
+        
+        for i, token in enumerate(self.tokens[self.index:]):
+            if self.tokens[self.index + i + 1].token_type == TokenType.NEWLINE:
+                return token
+
+    def peek_next(self) -> Token | None:
+        if self.index + 1 >= len(self.tokens):
+            return None
 
         return self.tokens[self.index + 1]
 
-    def match_type(self, *token_types: TokenType) -> bool:
-        token = self.peek()
-        if any(token.token_type == token_type for token_type in token_types):
-            self.advance()
-            return True
+    def match_type(self, token_type: TokenType) -> bool:
+        if self.parsed:
+            return False
 
-        return False
+        token = self.peek()
+        if token.token_type != token_type:
+            return False
+
+        self.advance()
+        return True
 
     def match_name(self, *names: str) -> bool:
+        if self.parsed:
+            return False
+
         token = self.peek()
         if token.token_type != TokenType.NAME or token.string not in names:
             return False
@@ -151,6 +171,9 @@ class Parser:
         return True
 
     def match_op(self, *ops: str) -> bool:
+        if self.parsed:
+            return False
+
         token = self.peek()
         if token.token_type != TokenType.OP or token.string not in ops:
             return False
@@ -158,15 +181,20 @@ class Parser:
         self.advance()
         return True
 
-    def expect(self, *token_types: TokenType) -> None:
-        if not self.match_type(*token_types):
+    def expect(self, token_type: TokenType) -> None:
+        if self.parsed:
+            raise ParseError(f"Expected {token_type}, found EOF", self.index)
+
+        if not self.match_type(token_type):
             token = self.peek()
-            token_types_str = ", ".join(str(token_type) for token_type in token_types)
             raise ParseError(
-                f"Expected {token_types_str}, found {token.token_type}", self.index
+                f"Expected {token_type}, found {token.token_type}", self.index
             )
 
     def expect_op(self, op: str) -> None:
+        if self.parsed:
+            raise ParseError(f"Expected {op}, found EOF", self.index)
+
         if not self.match_op(op):
             token = self.peek()
             raise ParseError(f"Expected '{op}', found '{token.string}'", self.index)
@@ -186,7 +214,8 @@ class Parser:
 
         if self.match_name("def", "if", "for", "while"):
             return self.parse_multiline_statement()
-        return self.parse_single_line_statement()
+        else:
+            return self.parse_single_line_statement()
 
     def parse_multiline_statement(self) -> FunctionDef | For | If | While:
         keyword = self.current().string
@@ -264,28 +293,144 @@ class Parser:
         while True:
             statement = self.parse_statement()
             body.append(statement)
-            if self.match_type(TokenType.DEDENT, TokenType.EOF):
+            if self.parsed or self.match_type(TokenType.DEDENT):
                 break
 
         return body
+    
+    def parse_import(self) -> Import:
+        self.expect(TokenType.NAME)
+
+        names = []
+        module = self.current().string
+
+        # case: import single module
+        if self.match_type(TokenType.NEWLINE):
+            return Import(names=[alias(name=module,asname=None)])
+
+        while True:
+            if self.match_op(","):
+                self.expect(TokenType.NAME)
+                names.append(
+                    alias(name=module, asname=None)
+                )
+                module = self.current().string
+                continue
+
+            elif self.match_name("as"):
+                self.expect(TokenType.NAME)
+                alias_name = self.current().string
+                names.append(
+                    alias(name=module, asname=alias_name)
+                )
+                if self.match_type(TokenType.NEWLINE):
+                    break
+                elif self.match_op(","):
+                    self.expect(TokenType.NAME)
+                    module = self.current().string
+                continue
+            
+            if self.match_op('.'):
+                self.expect(TokenType.NAME)
+                module += '.' + self.current().string
+                continue
+            
+            if self.match_type(TokenType.NEWLINE):
+                names.append(
+                    alias(name=module, asname=None)
+                )
+                break
+        
+        return Import(names=names)
+
+
+    def parse_importfrom(self) -> ImportFrom:
+        self.expect(TokenType.NAME)
+
+        module_name = self.current().string
+        names = []
+
+        # parse submodule names or direct import keyword
+        if self.match_op("."):
+            while not self.match_name("import"):
+                self.expect(TokenType.NAME)
+                module_name += '.' + self.current().string
+
+        elif not self.match_name("import"):
+            raise ParseError("Expected 'import' keyword", self.index)
+
+        # case: import all
+        if self.match_op("*"):
+            self.expect(TokenType.NEWLINE)
+            return ImportFrom(
+                module=module_name,
+                names=[alias(name="*", asname=None)]
+            )
+
+        self.expect(TokenType.NAME)
+        name = self.current().string
+
+        # case: import single module
+        if self.match_type(TokenType.NEWLINE):
+            return ImportFrom(module=module_name, names=[alias(name=name, asname=None)])
+
+        while True:
+            if self.match_op(","):
+                self.expect(TokenType.NAME)
+                names.append(
+                    alias(name=name, asname=None)
+                )
+                name = self.current().string
+                continue
+
+            elif self.match_name("as"):
+                self.expect(TokenType.NAME)
+                alias_name = self.current().string
+                names.append(
+                    alias(name=name, asname=alias_name)
+                )
+                if self.match_type(TokenType.NEWLINE):
+                    break
+                elif self.match_op(","):
+                    self.expect(TokenType.NAME)
+                    name = self.current().string
+                continue
+            
+            if self.match_type(TokenType.NEWLINE):
+                names.append(
+                    alias(name=name, asname=None)
+                )
+                break
+        
+        return ImportFrom(module=module_name, names=names)
 
     def parse_single_line_statement(
         self,
-    ) -> Pass | Break | Continue | Return | Assign | ExprStmt:
+    ) -> Pass | Break | Continue | Return | Assign | ExprStmt | Import | ImportFrom:
         if self.match_name("pass"):
-            node = Pass()
+            self.expect(TokenType.NEWLINE)
+            return Pass()
 
         if self.match_name("break"):
-            node = Break()
+            self.expect(TokenType.NEWLINE)
+            return Break()
 
         if self.match_name("continue"):
-            node = Continue()
+            self.expect(TokenType.NEWLINE)
+            return Continue()
+        
+        elif self.match_name("import"):
+            return self.parse_import()
+
+        elif self.match_name("from"):
+            return self.parse_importfrom()
 
         elif self.match_name("return"):
             return_values = self.parse_expressions()
             # TODO: make it a tuple if > 1
             assert len(return_values) == 1
-            node = Return(value=return_values[0])
+            self.expect(TokenType.NEWLINE)
+            return Return(value=return_values[0])
 
         # Now here we come to a conundrum.
         # Assign expects `targets`, and ExprStmt expects `expressions`, and `targets`
@@ -297,16 +442,14 @@ class Parser:
         # then check if it is followed by an `=`, if it is then we see if it's a valid
         # target or not, and fail or proceed accordingly.
         else:
-            node = self.parse_assign_or_exprstmt()
-
-        self.expect(TokenType.NEWLINE, TokenType.EOF)
-        return node
+            return self.parse_assign_or_exprstmt()
 
     def parse_assign_or_exprstmt(self) -> Assign | ExprStmt:
         expressions = self.parse_expressions()
 
         next_token = self.peek()
         if next_token.token_type != TokenType.OP:
+            self.expect(TokenType.NEWLINE)
             if len(expressions) == 1:
                 value = expressions[0]
             else:
@@ -334,6 +477,7 @@ class Parser:
 
             target = expressions[0]
             value = self.parse_expression()
+            self.expect(TokenType.NEWLINE)
             return AugAssign(target=target, op=next_token.string, value=value)
 
         if next_token.string != "=":
@@ -349,6 +493,7 @@ class Parser:
             assign_targets.append(expressions[0])
             expressions = self.parse_expressions()
 
+        self.expect(TokenType.NEWLINE)
         # TODO: make them a tuple if > 1
         assert len(expressions) == 1
         return Assign(targets=assign_targets, value=expressions[0])
@@ -364,7 +509,16 @@ class Parser:
 
     def parse_expression(self) -> Expression:
         # TODO: extraneous parens can be parsed here.
-        return self.parse_or()
+        return self.parse_as()
+    
+    def parse_as(self) -> Expression:
+        left = self.parse_or()
+
+        while self.match_name("as"):
+            right = self.parse_or()
+            left = BoolOp(left=left, op="as", right=right)
+
+        return left
 
     def parse_or(self) -> Expression:
         left = self.parse_and()
@@ -520,19 +674,22 @@ class Parser:
                     return Constant(None)
 
                 return Name(token.string)
-            raise ParseError(f"Unexpected keyword {token.string!r}", self.index - 1)
+
+            else:
+                raise ParseError(f"Unexpected keyword {token.string!r}", self.index - 1)
 
         if self.match_type(TokenType.NUMBER):
             token = self.current()
             if token.string.isdigit():
                 return Constant(int(token.string))
-            return Constant(float(token.string))
+            else:
+                return Constant(float(token.string))
 
         if self.match_type(TokenType.STRING):
             token = self.current()
-            unquoted_string = ast.literal_eval(token.string)
-            assert isinstance(unquoted_string, (str, bytes))
-            return Constant(unquoted_string)
+            unquoted_unescaped_string = ast.literal_eval(token.string)
+            assert isinstance(unquoted_unescaped_string, str)
+            return Constant(unquoted_unescaped_string)
 
         if self.match_op("("):
             # special_case: no items
@@ -592,24 +749,6 @@ def parse(source: str) -> Module | None:
         line, column = index_to_line_column(token.start, source)
         print(f"Parse Error at {line}:{column} -", exc)
         return
-
-
-def unquote(string: str) -> str:
-    if len(string) == 1:
-        return string
-
-    first, last = string[0], string[-1]
-    if first not in ("'", '"'):
-        return string
-
-    if first != last:
-        return string
-
-    first_three, last_three = string[:3], string[-3:]
-    if first_three == last_three:
-        return string[3:-3]
-
-    return string[1:-1]
 
 
 def main() -> None:
