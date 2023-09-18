@@ -9,7 +9,7 @@ import pytest
 @pytest.mark.parametrize(
     ("source", "output"),
     (
-        ("print('hello!')\n", "hello!\n"),
+        ("print('hello!')", "hello!\n"),
         (
             """\
             def foo(x):

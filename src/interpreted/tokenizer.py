@@ -14,6 +14,7 @@ class TokenType(Enum):
     INDENT = "indent"
     DEDENT = "dedent"
     NEWLINE = "newline"
+    EOF = "eof"
 
     def __repr__(self) -> str:
         """This is only there to make the output prettier."""
@@ -25,6 +26,9 @@ class Token(NamedTuple):
     string: str
     start: int
     end: int
+
+
+EOF = Token(TokenType.EOF, "", -1, -1)
 
 
 class TokenizeError(Exception):

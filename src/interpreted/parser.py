@@ -4,7 +4,7 @@ from keyword import iskeyword
 
 import sys
 
-from interpreted.tokenizer import Token, TokenType, index_to_line_column, tokenize
+from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
 from interpreted.nodes import (
     Assign,
     Attribute,
@@ -116,39 +116,33 @@ class Parser:
     def advance(self) -> None:
         self.index += 1
 
-    def current(self) -> Token | None:
+    def current(self) -> Token:
         if self.parsed:
-            return None
+            return EOF
 
         return self.tokens[self.index - 1]
 
-    def peek(self) -> Token | None:
+    def peek(self) -> Token:
         if self.parsed:
-            return None
+            return EOF
 
         return self.tokens[self.index]
 
-    def peek_next(self) -> Token | None:
+    def peek_next(self) -> Token:
         if self.index + 1 >= len(self.tokens):
-            return None
+            return EOF
 
         return self.tokens[self.index + 1]
 
-    def match_type(self, token_type: TokenType) -> bool:
-        if self.parsed:
-            return False
-
+    def match_type(self, *token_types: TokenType) -> bool:
         token = self.peek()
-        if token.token_type != token_type:
-            return False
+        if any(token.token_type == token_type for token_type in token_types):
+            self.advance()
+            return True
 
-        self.advance()
-        return True
+        return False
 
     def match_name(self, *names: str) -> bool:
-        if self.parsed:
-            return False
-
         token = self.peek()
         if token.token_type != TokenType.NAME or token.string not in names:
             return False
@@ -157,9 +151,6 @@ class Parser:
         return True
 
     def match_op(self, *ops: str) -> bool:
-        if self.parsed:
-            return False
-
         token = self.peek()
         if token.token_type != TokenType.OP or token.string not in ops:
             return False
@@ -167,20 +158,15 @@ class Parser:
         self.advance()
         return True
 
-    def expect(self, token_type: TokenType) -> None:
-        if self.parsed:
-            raise ParseError(f"Expected {token_type}, found EOF", self.index)
-
-        if not self.match_type(token_type):
+    def expect(self, *token_types: TokenType) -> None:
+        if not self.match_type(*token_types):
             token = self.peek()
+            token_types_str = ", ".join(str(token_type) for token_type in token_types)
             raise ParseError(
-                f"Expected {token_type}, found {token.token_type}", self.index
+                f"Expected {token_types_str}, found {token.token_type}", self.index
             )
 
     def expect_op(self, op: str) -> None:
-        if self.parsed:
-            raise ParseError(f"Expected {op}, found EOF", self.index)
-
         if not self.match_op(op):
             token = self.peek()
             raise ParseError(f"Expected '{op}', found '{token.string}'", self.index)
@@ -279,7 +265,7 @@ class Parser:
         while True:
             statement = self.parse_statement()
             body.append(statement)
-            if self.parsed or self.match_type(TokenType.DEDENT):
+            if self.match_type(TokenType.DEDENT, TokenType.EOF):
                 break
 
         return body
@@ -288,23 +274,19 @@ class Parser:
         self,
     ) -> Pass | Break | Continue | Return | Assign | ExprStmt:
         if self.match_name("pass"):
-            self.expect(TokenType.NEWLINE)
-            return Pass()
+            node = Pass()
 
         if self.match_name("break"):
-            self.expect(TokenType.NEWLINE)
-            return Break()
+            node = Break()
 
         if self.match_name("continue"):
-            self.expect(TokenType.NEWLINE)
-            return Continue()
+            node = Continue()
 
         elif self.match_name("return"):
             return_values = self.parse_expressions()
             # TODO: make it a tuple if > 1
             assert len(return_values) == 1
-            self.expect(TokenType.NEWLINE)
-            return Return(value=return_values[0])
+            node = Return(value=return_values[0])
 
         # Now here we come to a conundrum.
         # Assign expects `targets`, and ExprStmt expects `expressions`, and `targets`
@@ -316,14 +298,16 @@ class Parser:
         # then check if it is followed by an `=`, if it is then we see if it's a valid
         # target or not, and fail or proceed accordingly.
         else:
-            return self.parse_assign_or_exprstmt()
+            node = self.parse_assign_or_exprstmt()
+
+        self.expect(TokenType.NEWLINE, TokenType.EOF)
+        return node
 
     def parse_assign_or_exprstmt(self) -> Assign | ExprStmt:
         expressions = self.parse_expressions()
 
         next_token = self.peek()
         if next_token.token_type != TokenType.OP:
-            self.expect(TokenType.NEWLINE)
             if len(expressions) == 1:
                 value = expressions[0]
             else:
@@ -351,7 +335,6 @@ class Parser:
 
             target = expressions[0]
             value = self.parse_expression()
-            self.expect(TokenType.NEWLINE)
             return AugAssign(target=target, op=next_token.string, value=value)
 
         if next_token.string != "=":
@@ -367,7 +350,6 @@ class Parser:
             assign_targets.append(expressions[0])
             expressions = self.parse_expressions()
 
-        self.expect(TokenType.NEWLINE)
         # TODO: make them a tuple if > 1
         assert len(expressions) == 1
         return Assign(targets=assign_targets, value=expressions[0])
