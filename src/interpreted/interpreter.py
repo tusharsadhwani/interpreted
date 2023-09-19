@@ -267,7 +267,47 @@ class Value(Object):
         return f"Value({self.value!r})"
 
     def as_string(self) -> None:
-        return str(self.value)
+        if not isinstance(self.value, str):
+            return str(self.value)
+
+        transformed_chars = []
+        index = 0
+        while index < len(self.value):
+            char = self.value[index]
+            if char != "\\":
+                transformed_chars.append(char)
+                index += 1
+            else:
+                next_char = self.value[index + 1]
+                if next_char == "x":
+                    next_four_chars = self.value[index + 2 : index + 4]
+                    try:
+                        unicode_char = chr(int(next_four_chars, 16))
+                        transformed_chars.append(unicode_char)
+                    except ValueError:
+                        transformed_chars.extend(["\\", "x"])
+                    index += 4
+                elif next_char == "u":
+                    next_four_chars = self.value[index + 2 : index + 6]
+                    try:
+                        unicode_char = chr(int(next_four_chars, 16))
+                        transformed_chars.append(unicode_char)
+                    except ValueError:
+                        transformed_chars.extend(["\\", "u"])
+                    index += 6
+                elif next_char == "U":
+                    next_eight_chars = self.value[index + 2 : index + 10]
+                    try:
+                        unicode_char = chr(int(next_eight_chars, 16))
+                        transformed_chars.append(unicode_char)
+                    except ValueError:
+                        transformed_chars.extend(["\\", "U"])
+                    index += 10
+                else:
+                    transformed_chars.extend(["\\", next_char])
+                    index += 2
+
+        return "".join(transformed_chars)
 
     def repr(self) -> None:
         return repr(self.value)

@@ -238,7 +238,7 @@ class Tokenizer:
             if next_char == "":
                 raise TokenizeError("Unterminated string", index=self.start)
 
-            if next_char in "\nnrtf'\"\\":
+            if next_char in "\nnrtxuUf'\"\\":
                 continue
 
             # Not implemented: \xHH, \uHHHH and \UHHHHHHHH
