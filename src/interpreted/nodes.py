@@ -1,8 +1,10 @@
-from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from __future__ import annotations
 
-BINOP: TypeAlias = Literal["+", "-", "*", "/", "**", "@", "%", "^", "&"]
-AUGOP: TypeAlias = Literal["+=", "-=", "*=", "/=", "**=", "@=", "%=", "^=", "&="]
+from dataclasses import dataclass
+from typing import Literal, Union
+
+BINOP = Literal["+", "-", "*", "/", "**", "@", "%", "^", "&"]
+AUGOP = Literal["+=", "-=", "*=", "/=", "**=", "@=", "%=", "^=", "&="]
 
 
 @dataclass
@@ -59,7 +61,7 @@ class Slice(Expression):
     end: Expression
 
 
-Target: TypeAlias = Name | Attribute | Subscript
+Target = Union[Name, Attribute, Subscript]
 
 
 @dataclass
