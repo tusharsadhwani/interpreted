@@ -10,12 +10,13 @@ import pytest
     ("source", "output"),
     (
         ("print('hello!')", "hello!\n"),
+        ('print("""foo""")', "foo\n"),
         (r"print('foo \x41 bar')", "foo A bar\n"),
         (r"print('foo \u1234 bar')", "foo ሴ bar\n"),
         (r"print('foo \u2603 bar')", "foo ☃ bar\n"),
         (r"print('foo \U00002603 bar')", "foo ☃ bar\n"),
         (r"print('foo \U0001F643 bar')", "foo 🙃 bar\n"),
-        (r"print('foo \x41 \U0001F643 bar')", "foo A 🙃 bar\n"), 
+        (r"print('foo \x41 \U0001F643 bar')", "foo A 🙃 bar\n"),
         (
             """\
             def foo(x):

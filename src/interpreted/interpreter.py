@@ -280,32 +280,25 @@ class Value(Object):
             else:
                 next_char = self.value[index + 1]
                 if next_char == "x":
-                    next_four_chars = self.value[index + 2 : index + 4]
-                    try:
-                        unicode_char = chr(int(next_four_chars, 16))
-                        transformed_chars.append(unicode_char)
-                    except ValueError:
-                        transformed_chars.extend(["\\", "x"])
+                    chars = self.value[index + 2 : index + 4]
                     index += 4
                 elif next_char == "u":
-                    next_four_chars = self.value[index + 2 : index + 6]
-                    try:
-                        unicode_char = chr(int(next_four_chars, 16))
-                        transformed_chars.append(unicode_char)
-                    except ValueError:
-                        transformed_chars.extend(["\\", "u"])
+                    chars = self.value[index + 2 : index + 6]
                     index += 6
                 elif next_char == "U":
-                    next_eight_chars = self.value[index + 2 : index + 10]
-                    try:
-                        unicode_char = chr(int(next_eight_chars, 16))
-                        transformed_chars.append(unicode_char)
-                    except ValueError:
-                        transformed_chars.extend(["\\", "U"])
+                    chars = self.value[index + 2 : index + 10]
                     index += 10
                 else:
                     transformed_chars.extend(["\\", next_char])
                     index += 2
+
+                try:
+                    unicode_char = chr(int(chars, 16))
+                    transformed_chars.append(unicode_char)
+                except ValueError as exc:
+                    raise InterpreterError(
+                        f"Invalid unicode escape: \\{next_char}{chars}"
+                    ) from exc
 
         return "".join(transformed_chars)
 
