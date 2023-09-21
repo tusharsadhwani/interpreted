@@ -1,9 +1,8 @@
 from __future__ import annotations
-from keyword import iskeyword
 
 import sys
+from keyword import iskeyword
 
-from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
 from interpreted.nodes import (
     Assign,
     Attribute,
@@ -16,8 +15,8 @@ from interpreted.nodes import (
     Constant,
     Continue,
     Dict,
-    ExprStmt,
     Expression,
+    ExprStmt,
     For,
     FunctionDef,
     If,
@@ -33,6 +32,7 @@ from interpreted.nodes import (
     UnaryOp,
     While,
 )
+from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
 
 
 class ParseError(Exception):
