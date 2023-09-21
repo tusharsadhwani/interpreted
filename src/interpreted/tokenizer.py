@@ -231,7 +231,7 @@ class Tokenizer:
                 self.advance()
                 self.add_token(TokenType.STRING)
                 return
-            elif not is_multiline and char == quote_char:
+            if not is_multiline and char == quote_char:
                 self.add_token(TokenType.STRING)
                 return
 
