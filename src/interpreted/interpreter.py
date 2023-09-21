@@ -545,7 +545,7 @@ class Interpreter:
         if node.op == "in":
             if isinstance(right, str):
                 return Value(left in right)
-            elif isinstance(right, (list, tuple, deque, dict)):
+            if isinstance(right, (list, tuple, deque, dict)):
                 return Value(
                     any(
                         isinstance(element, Value) and element.value == left
@@ -555,7 +555,7 @@ class Interpreter:
         if node.op == "not in":
             if isinstance(right, str):
                 return Value(left not in right)
-            elif isinstance(right, (list, tuple, deque)):
+            if isinstance(right, (list, tuple, deque)):
                 return Value(
                     not any(
                         isinstance(element, Value) and element.value == left
@@ -614,9 +614,9 @@ class Interpreter:
 
         if node.op == "not":
             return Value(not value.value)
-        elif node.op == "+":
+        if node.op == "+":
             return value
-        elif node.op == "-":
+        if node.op == "-":
             return Value(-value.value)
 
         raise AssertionError(f"node.op must be '+', '-', or 'not', found {node!r}")
@@ -648,8 +648,7 @@ class Interpreter:
                         f"Slice indices should be integers or 'None', got {start.repr()}, {end.repr()}"
                     )
                 return Value(obj.value[start.value : end.value])
-            else:
-                raise NotImplementedError(node)
+            raise NotImplementedError(node)
 
         key = self.visit(node.key)
         if isinstance(obj, (List, Tuple, Deque)):
@@ -677,7 +676,7 @@ class Interpreter:
         if attribute_name in obj.attributes:
             return obj.attributes[attribute_name]
 
-        elif attribute_name in obj.methods:
+        if attribute_name in obj.methods:
             return obj.methods[attribute_name]
 
         raise InterpreterError(
