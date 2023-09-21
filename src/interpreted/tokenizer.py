@@ -125,7 +125,6 @@ class Tokenizer:
 
         # comments
         elif char == "#":
-            self.advance()
             self.scan_comment()
 
         # assigns and augmented assigns
@@ -146,6 +145,12 @@ class Tokenizer:
 
         elif char in ('"', "'"):
             self.scan_string(char)
+
+        elif char == 'b' and self.peek() in ('"', "'"):
+            c = self.peek()
+            self.advance()
+            self.scan_string(c)
+
 
         elif char.isdigit():
             self.scan_number()

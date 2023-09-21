@@ -633,7 +633,11 @@ class Interpreter:
             and isinstance(key, Value)
         ):
             return Value(obj.value[key.value])
-
+        if (isinstance(obj, Value)
+            and isinstance(obj.value, bytes)
+            and isinstance(key, Value)):
+            return Value(obj.value[key.value])
+    
         raise InterpreterError(f"{type(obj).__name__} object has no key {key.repr()}")
 
     def visit_Attribute(self, node: Attribute) -> Object:

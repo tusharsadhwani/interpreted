@@ -535,7 +535,7 @@ class Parser:
         if self.match_type(TokenType.STRING):
             token = self.current()
             unquoted_unescaped_string = ast.literal_eval(token.string)
-            assert isinstance(unquoted_unescaped_string, str)
+            assert isinstance(unquoted_unescaped_string, (str,bytes) )
             return Constant(unquoted_unescaped_string)
 
         if self.match_op("("):
