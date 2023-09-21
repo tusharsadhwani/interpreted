@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 @unique
 class TokenType(Enum):
-    OP = 'op'
+    OP = "op"
     NAME = "name"
     STRING = "string"
     NUMBER = "number"
