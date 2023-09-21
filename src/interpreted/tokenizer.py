@@ -151,7 +151,6 @@ class Tokenizer:
             self.advance()
             self.scan_string(c)
 
-
         elif char.isdigit():
             self.scan_number()
 
