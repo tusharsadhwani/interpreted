@@ -116,8 +116,7 @@ def tokenize(json_string):
         if new_index is None:
             print("Parsing error at index", index)
             return None
-        else:
-            index = new_index
+        index = new_index
 
     return tokens
 

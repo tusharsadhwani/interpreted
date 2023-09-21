@@ -185,8 +185,7 @@ class Parser:
 
         if self.match_name("def", "if", "for", "while"):
             return self.parse_multiline_statement()
-        else:
-            return self.parse_single_line_statement()
+        return self.parse_single_line_statement()
 
     def parse_multiline_statement(self) -> FunctionDef | For | If | While:
         keyword = self.current().string
@@ -520,16 +519,13 @@ class Parser:
                     return Constant(None)
 
                 return Name(token.string)
-
-            else:
-                raise ParseError(f"Unexpected keyword {token.string!r}", self.index - 1)
+            raise ParseError(f"Unexpected keyword {token.string!r}", self.index - 1)
 
         if self.match_type(TokenType.NUMBER):
             token = self.current()
             if token.string.isdigit():
                 return Constant(int(token.string))
-            else:
-                return Constant(float(token.string))
+            return Constant(float(token.string))
 
         if self.match_type(TokenType.STRING):
             token = self.current()
