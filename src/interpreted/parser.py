@@ -1,5 +1,4 @@
 from __future__ import annotations
-import ast
 from keyword import iskeyword
 
 import sys
@@ -534,9 +533,9 @@ class Parser:
 
         if self.match_type(TokenType.STRING):
             token = self.current()
-            unquoted_unescaped_string = ast.literal_eval(token.string)
-            assert isinstance(unquoted_unescaped_string, (str,bytes) )
-            return Constant(unquoted_unescaped_string)
+            unquoted_string = unquote(token.string)
+            assert isinstance(unquoted_string, str)
+            return Constant(unquoted_string)
 
         if self.match_op("("):
             # special_case: no items
@@ -596,6 +595,24 @@ def parse(source: str) -> Module | None:
         line, column = index_to_line_column(token.start, source)
         print(f"Parse Error at {line}:{column} -", exc)
         return
+
+
+def unquote(string: str) -> str:
+    if len(string) == 1:
+        return string
+
+    first, last = string[0], string[-1]
+    if first not in ("'", '"'):
+        return string
+
+    if first != last:
+        return string
+
+    first_three, last_three = string[:3], string[-3:]
+    if first_three == last_three:
+        return string[3:-3]
+
+    return string[1:-1]
 
 
 def main() -> None:
