@@ -18,6 +18,21 @@ import pytest
         (r"print('foo \x41 \U0001F643 bar')", "foo A 🙃 bar\n"),
         (
             """\
+            a = b'abc'
+            print(a)
+            print(a[0])
+            print(a * 2)
+            print(a + b'd')
+            """,
+            """\
+            b'abc'
+            97
+            b'abcabc'
+            b'abcd'
+            """,
+        ),
+        (
+            """\
             def foo(x):
                 y = 5
                 print(x, y)
@@ -75,7 +90,7 @@ def test_interpret(source, output) -> None:
         )
 
     assert process.stderr == b""
-    assert process.stdout.decode() == output
+    assert process.stdout.decode() == dedent(output)
 
 
 def test_file_not_found() -> None:

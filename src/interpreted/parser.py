@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import sys
 from keyword import iskeyword
 
@@ -529,8 +530,8 @@ class Parser:
 
         if self.match_type(TokenType.STRING):
             token = self.current()
-            unquoted_string = unquote(token.string)
-            assert isinstance(unquoted_string, str)
+            unquoted_string = ast.literal_eval(token.string)
+            assert isinstance(unquoted_string, (str, bytes))
             return Constant(unquoted_string)
 
         if self.match_op("("):
