@@ -4,13 +4,13 @@ import pytest
 
 from interpreted.nodes import (
     Assign,
+    AugAssign,
+    Call,
     Compare,
     Constant,
     ExprStmt,
     Module,
-    Call,
     Name,
-    AugAssign,
     While,
 )
 from interpreted.parser import Parser
