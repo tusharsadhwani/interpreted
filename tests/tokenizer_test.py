@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from textwrap import dedent
+
 import pytest
 
-from interpreted.tokenizer import Token, TokenType, Tokenizer
+from interpreted.tokenizer import Token, Tokenizer, TokenType
 
 
 @pytest.mark.parametrize(
