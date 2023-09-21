@@ -267,40 +267,7 @@ class Value(Object):
         return f"Value({self.value!r})"
 
     def as_string(self) -> None:
-        if not isinstance(self.value, str):
-            return str(self.value)
-
-        transformed_chars = []
-        index = 0
-        while index < len(self.value):
-            char = self.value[index]
-            if char != "\\":
-                transformed_chars.append(char)
-                index += 1
-            else:
-                next_char = self.value[index + 1]
-                if next_char == "x":
-                    chars = self.value[index + 2 : index + 4]
-                    index += 4
-                elif next_char == "u":
-                    chars = self.value[index + 2 : index + 6]
-                    index += 6
-                elif next_char == "U":
-                    chars = self.value[index + 2 : index + 10]
-                    index += 10
-                else:
-                    transformed_chars.extend(["\\", next_char])
-                    index += 2
-
-                try:
-                    unicode_char = chr(int(chars, 16))
-                    transformed_chars.append(unicode_char)
-                except ValueError as exc:
-                    raise InterpreterError(
-                        f"Invalid unicode escape: \\{next_char}{chars}"
-                    ) from exc
-
-        return "".join(transformed_chars)
+        return str(self.value)
 
     def repr(self) -> None:
         return repr(self.value)
@@ -665,11 +632,13 @@ class Interpreter:
             and isinstance(key, Value)
         ):
             return Value(obj.value[key.value])
-        if (isinstance(obj, Value)
+        if (
+            isinstance(obj, Value)
             and isinstance(obj.value, bytes)
-            and isinstance(key, Value)):
+            and isinstance(key, Value)
+        ):
             return Value(obj.value[key.value])
-    
+
         raise InterpreterError(f"{type(obj).__name__} object has no key {key.repr()}")
 
     def visit_Attribute(self, node: Attribute) -> Object:
