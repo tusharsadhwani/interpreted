@@ -146,7 +146,7 @@ class Tokenizer:
         elif char in ('"', "'"):
             self.scan_string(char)
 
-        elif char == 'b' and self.peek() in ('"', "'"):
+        elif char == "b" and self.peek() in ('"', "'"):
             c = self.peek()
             self.advance()
             self.scan_string(c)
