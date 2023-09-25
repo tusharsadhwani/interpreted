@@ -62,7 +62,12 @@ class Parser:
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' expressions ':' block else?
         targets -> primary (',' primary)* ','?
+<<<<<<< HEAD
         single_line_stmt -> Import | ImportFrom | Pass | Break | Continue | Return | Assign | ExprStmt
+=======
+        single_line_stmt -> ImportStmt | Pass | Break | Continue | Return | Assign | ExprStmt
+        ImportStmt -> Import | ImportFrom
+>>>>>>> da9c92a (update grammar docstring)
         Import -> 'import' module ('as' alias)? (',' module ('as' alias)? )* '\n'
         ImportFrom -> 'from' module 'import' NAME ('as' alias)? (',' NAME 'as' alias)? '\n'
         module -> NAME ('.' NAME)*
