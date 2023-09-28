@@ -9,11 +9,11 @@ from interpreted.nodes import (
     Compare,
     Constant,
     ExprStmt,
+    Import,
+    ImportFrom,
     Module,
     Name,
     While,
-    Import,
-    ImportFrom,
     alias,
 )
 from interpreted.parser import Parser
