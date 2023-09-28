@@ -94,6 +94,7 @@ from interpreted.tokenizer import Tokenizer
             from module_name import name1, name2
             from module_name import name1 as alias1, name2 as alias2
             from package_name.submodule import submodule_name
+            from mod.submod.meh import ara as a, b as aux
             """,
             Module(
                 body=[
@@ -117,6 +118,13 @@ from interpreted.tokenizer import Tokenizer
                     ImportFrom(
                         module="package_name.submodule",
                         names=[alias(name="submodule_name", asname=None)],
+                    ),
+                    ImportFrom(
+                        module="mod.submod.meh",
+                        names=[
+                            alias(name="ara", asname="a"),
+                            alias(name="b", asname="aux"),
+                        ],
                     ),
                 ]
             ),
