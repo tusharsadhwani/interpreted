@@ -57,6 +57,60 @@ from interpreted.tokenizer import Tokenizer
                 ],
             ),
         ),
+        (
+            """\
+                import ast, mod
+                import module_name
+                import module_name as alias, othername as other_alias
+                import package_name.module_name
+            """,
+            Module(
+                body=[
+                    Import(names=[alias(name='ast', asname=None), alias(name='mod', asname=None)]),
+                    Import(names=[alias(name='module_name', asname=None)]),
+                    Import(names=[
+                        alias(name='module_name', asname='alias'),
+                        alias(name='othername', asname='other_alias')
+                    ]),
+                    Import(names=[alias(name='package_name.module_name', asname=None)])
+                ]
+            )            
+        ),
+
+        (
+            """\
+            from module_name import *
+            from module_name import name1, name2
+            from module_name import name1 as alias1, name2 as alias2
+            from package_name.submodule import submodule_name
+            """,
+            Module(
+                body=[
+                    ImportFrom(
+                        module='module_name',
+                        names=[alias(name='*', asname=None)]
+                    ),
+                    ImportFrom(
+                        module='module_name',
+                        names=[
+                            alias(name='name1', asname=None),
+                            alias(name='name2', asname=None)
+                        ]
+                    ),
+                    ImportFrom(
+                        module='module_name',
+                        names=[
+                            alias(name='name1', asname='alias1'),
+                            alias(name='name2', asname='alias2')
+                        ]
+                    ),
+                    ImportFrom(
+                        module='package_name.submodule',
+                        names=[alias(name='submodule_name', asname=None)]
+                    )
+                ]
+            )            
+        )
     ),
 )
 def test_parser(source: str, tree: Module) -> None:
