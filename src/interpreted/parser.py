@@ -62,7 +62,9 @@ class Parser:
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' expressions ':' block else?
         targets -> primary (',' primary)* ','?
-        single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt
+        single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt | Import | ImportFrom
+        Import -> 'import' module ('as' alias)? (',' module ('as' alias)? )* '\n'
+        ImportFrom -> 'from' module 'import' NAME ('as' alias)? (',' NAME ('as' alias)?)* '\n'
         Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
         expressions -> expression (',' expression)* ','?
@@ -274,7 +276,7 @@ class Parser:
 
     def parse_single_line_statement(
         self,
-    ) -> Pass | Break | Continue | Return | Assign | ExprStmt:
+    ) -> Pass | Break | Continue | Return | Assign | ExprStmt | Import | ImportFrom:
         if self.match_name("pass"):
             node = Pass()
 
