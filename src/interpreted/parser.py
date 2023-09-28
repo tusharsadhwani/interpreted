@@ -355,14 +355,11 @@ class Parser:
         names = []
 
         # parse submodule names or direct import keyword
-        if self.match_op("."):
-            while not self.match_name("import"):
-                if self.match_op("."):
-                    continue
-                self.expect(TokenType.NAME)
-                module_name += "." + self.current().string
+        while self.match_op("."):
+            self.expect(TokenType.NAME)
+            module_name += "." + self.current().string
 
-        elif not self.match_name("import"):
+        if not self.match_name("import"):
             raise ParseError("Expected 'import' keyword", self.index)
 
         # case: import all
