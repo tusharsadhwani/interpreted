@@ -327,7 +327,7 @@ class Parser:
                 module = self.current().string
                 continue
 
-            elif self.match_name("as"):
+            if self.match_name("as"):
                 self.expect(TokenType.NAME)
                 alias_name = self.current().string
                 names.append(alias(name=module, asname=alias_name))
