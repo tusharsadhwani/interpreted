@@ -12,6 +12,9 @@ from interpreted.nodes import (
     Module,
     Name,
     While,
+    Import,
+    ImportFrom,
+    alias
 )
 from interpreted.parser import Parser
 from interpreted.tokenizer import Tokenizer
