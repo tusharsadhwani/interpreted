@@ -21,6 +21,8 @@ from interpreted.nodes import (
     For,
     FunctionDef,
     If,
+    Import,
+    ImportFrom,
     List,
     Module,
     Name,
@@ -32,8 +34,6 @@ from interpreted.nodes import (
     Tuple,
     UnaryOp,
     While,
-    Import,
-    ImportFrom,
     alias,
 )
 from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
