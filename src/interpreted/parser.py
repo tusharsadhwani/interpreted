@@ -63,8 +63,9 @@ class Parser:
         For -> 'for' targets 'in' expressions ':' block else?
         targets -> primary (',' primary)* ','?
         single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt | Import | ImportFrom
-        Import -> 'import' module ('as' alias)? (',' module ('as' alias)? )* '\n'
-        ImportFrom -> 'from' module 'import' NAME ('as' alias)? (',' NAME ('as' alias)?)* '\n'
+        ImportFrom -> 'from' module 'import' alias (',' alias)* '\n'
+        alias -> NAME ('as' NAME)?
+        module -> NAME ('.' NAME)*
         Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
         expressions -> expression (',' expression)* ','?
