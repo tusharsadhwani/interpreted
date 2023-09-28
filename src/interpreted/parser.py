@@ -317,10 +317,6 @@ class Parser:
         names = []
         module = self.current().string
 
-        # case: import single module
-        if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
-            return Import(names=[alias(name=module, asname=None)])
-
         while True:
             if self.match_op(","):
                 self.expect(TokenType.NAME)
@@ -359,6 +355,8 @@ class Parser:
         # parse submodule names or direct import keyword
         if self.match_op("."):
             while not self.match_name("import"):
+                if self.match_op("."):
+                    continue
                 self.expect(TokenType.NAME)
                 module_name += "." + self.current().string
 
@@ -381,9 +379,8 @@ class Parser:
                 self.expect(TokenType.NAME)
                 names.append(alias(name=name, asname=None))
                 name = self.current().string
-                continue
 
-            elif self.match_name("as"):
+            if self.match_name("as"):
                 self.expect(TokenType.NAME)
                 alias_name = self.current().string
                 names.append(alias(name=name, asname=alias_name))
@@ -392,7 +389,6 @@ class Parser:
                 elif self.match_op(","):
                     self.expect(TokenType.NAME)
                     name = self.current().string
-                continue
 
             if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
                 names.append(alias(name=name, asname=None))

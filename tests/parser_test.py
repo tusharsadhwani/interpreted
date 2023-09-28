@@ -66,6 +66,7 @@ from interpreted.tokenizer import Tokenizer
             import module_name
             import module_name as alias, othername as other_alias
             import package_name.module_name
+            import a.b.c
             """,
             Module(
                 body=[
@@ -83,6 +84,7 @@ from interpreted.tokenizer import Tokenizer
                         ]
                     ),
                     Import(names=[alias(name="package_name.module_name", asname=None)]),
+                    Import(names=[alias(name="a.b.c", asname=None)]),
                 ]
             ),
         ),
