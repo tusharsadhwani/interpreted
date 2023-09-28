@@ -175,5 +175,22 @@ class Return(Statement):
 
 
 @dataclass
+class alias:
+    name: str
+    asname: str | None
+
+
+@dataclass
+class Import(Statement):
+    names: list[alias]
+
+
+@dataclass
+class ImportFrom(Statement):
+    module: str
+    names: list[alias]
+
+
+@dataclass
 class Module:
     body: list[Statement]

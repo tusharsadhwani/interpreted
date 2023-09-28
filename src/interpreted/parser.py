@@ -32,6 +32,9 @@ from interpreted.nodes import (
     Tuple,
     UnaryOp,
     While,
+    Import,
+    ImportFrom,
+    alias,
 )
 from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
 
@@ -59,7 +62,10 @@ class Parser:
         While -> 'while' expression ':' block [else]
         For -> 'for' targets 'in' expressions ':' block else?
         targets -> primary (',' primary)* ','?
-        single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt
+        single_line_stmt -> Pass | Break | Continue | Return | Assign | ExprStmt | Import | ImportFrom
+        ImportFrom -> 'from' module 'import' alias (',' alias)* '\n'
+        alias -> NAME ('as' NAME)?
+        module -> NAME ('.' NAME)*
         Pass -> 'pass' '\n'
         Return -> 'return' expressions? '\n'
         expressions -> expression (',' expression)* ','?
@@ -271,7 +277,7 @@ class Parser:
 
     def parse_single_line_statement(
         self,
-    ) -> Pass | Break | Continue | Return | Assign | ExprStmt:
+    ) -> Pass | Break | Continue | Return | Assign | ExprStmt | Import | ImportFrom:
         if self.match_name("pass"):
             node = Pass()
 
@@ -280,6 +286,12 @@ class Parser:
 
         if self.match_name("continue"):
             node = Continue()
+
+        elif self.match_name("import"):
+            node = self.parse_import()
+
+        elif self.match_name("from"):
+            node = self.parse_importfrom()
 
         elif self.match_name("return"):
             return_values = self.parse_expressions()
@@ -301,6 +313,88 @@ class Parser:
 
         self.expect(TokenType.NEWLINE, TokenType.EOF)
         return node
+
+    def parse_import(self) -> Import:
+        self.expect(TokenType.NAME)
+
+        names = []
+        module = self.current().string
+
+        while True:
+            if self.match_op(","):
+                self.expect(TokenType.NAME)
+                names.append(alias(name=module, asname=None))
+                module = self.current().string
+                continue
+
+            if self.match_name("as"):
+                self.expect(TokenType.NAME)
+                alias_name = self.current().string
+                names.append(alias(name=module, asname=alias_name))
+                if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
+                    break
+                elif self.match_op(","):
+                    self.expect(TokenType.NAME)
+                    module = self.current().string
+                continue
+
+            if self.match_op("."):
+                self.expect(TokenType.NAME)
+                module += "." + self.current().string
+                continue
+
+            if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
+                names.append(alias(name=module, asname=None))
+                break
+
+        return Import(names=names)
+
+    def parse_importfrom(self) -> ImportFrom:
+        self.expect(TokenType.NAME)
+
+        module_name = self.current().string
+        names = []
+
+        # parse submodule names or direct import keyword
+        while self.match_op("."):
+            self.expect(TokenType.NAME)
+            module_name += "." + self.current().string
+
+        if not self.match_name("import"):
+            raise ParseError("Expected 'import' keyword", self.index)
+
+        # case: import all
+        if self.match_op("*"):
+            return ImportFrom(module=module_name, names=[alias(name="*", asname=None)])
+
+        self.expect(TokenType.NAME)
+        name = self.current().string
+
+        # case: import single module
+        if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
+            return ImportFrom(module=module_name, names=[alias(name=name, asname=None)])
+
+        while True:
+            if self.match_op(","):
+                self.expect(TokenType.NAME)
+                names.append(alias(name=name, asname=None))
+                name = self.current().string
+
+            if self.match_name("as"):
+                self.expect(TokenType.NAME)
+                alias_name = self.current().string
+                names.append(alias(name=name, asname=alias_name))
+                if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
+                    break
+                elif self.match_op(","):
+                    self.expect(TokenType.NAME)
+                    name = self.current().string
+
+            if self.peek().token_type in (TokenType.NEWLINE, TokenType.EOF):
+                names.append(alias(name=name, asname=None))
+                break
+
+        return ImportFrom(module=module_name, names=names)
 
     def parse_assign_or_exprstmt(self) -> Assign | ExprStmt:
         expressions = self.parse_expressions()
