@@ -80,14 +80,14 @@ class Parser:
         # can also be written as:
         # sum -> factor ('+' factor)* | factor ('-' factor)* | factor
         sum -> sum '+' factor | sum '-' factor | factor
-        term -> factor '*' unary
-              | factor '/' unary
-              | factor '//' unary
-              | factor '%' unary
-              | factor '@' unary
-              | unary
+        factor -> factor '*' unary
+                | factor '/' unary
+                | factor '//' unary
+                | factor '%' unary
+                | factor '@' unary
+                | unary
         unary -> '+' unary | '-' unary | '~' unary | power
-        power -> primary '**' unary
+        power -> primary '**' unary | primary
 
         primary -> Attribute
                  | Subscript
