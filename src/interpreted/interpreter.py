@@ -67,8 +67,9 @@ class Object:
 
 
 class Module(Object):
-    def __init__(self, attrs: {str: Scope}):
-        self.attributes = attrs
+    def __init__(self, members: dict[str, Object]):
+        super().__init__()
+        self.attributes.update(members)
 
 
 class Function(Object):
@@ -423,7 +424,7 @@ class Interpreter:
             self.scope = parent_scope
             self.globals = parent_globals
 
-            module_obj = Module(attrs=vars(module_scope))
+            module_obj = Module(members=vars(module_scope))
 
             self.scope.set(name, module_obj)
 
@@ -450,15 +451,15 @@ class Interpreter:
         for alias in node.names:
             name = alias.name
             if name == "*":
-                for attr in module_scope.__dict__:
-                    self.scope.set(attr, module_scope.get(attr))
-                break
+                for member, value in vars(module_scope).items():
+                    self.scope.set(member, value)
+                return
 
             if alias.asname:
                 name = alias.asname
 
-            body = module_scope.get(alias.name)
-            self.scope.set(name, body)
+            member = module_scope.get(alias.name)
+            self.scope.set(name, member)
 
     def visit_FunctionDef(self, node: FunctionDef) -> None:
         function = UserFunction(node, self.globals)
