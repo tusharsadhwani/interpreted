@@ -17,6 +17,8 @@ from interpreted.nodes import (
     ExprStmt,
     FunctionDef,
     If,
+    Import,
+    ImportFrom,
     Module,
     Name,
     Node,
@@ -25,8 +27,6 @@ from interpreted.nodes import (
     UnaryOp,
     While,
     alias,
-    Import,
-    ImportFrom,
 )
 from interpreted.parser import parse
 
