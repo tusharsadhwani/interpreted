@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Union
 
 BINOP = Literal["+", "-", "*", "/", "**", "@", "%", "^", "&"]
@@ -117,6 +117,7 @@ class FunctionDef(Statement):
     name: str
     params: list[str]
     body: list[Statement]
+    decorators: list[Decorator] = field(default_factory=list)
 
 
 @dataclass
@@ -194,3 +195,7 @@ class ImportFrom(Statement):
 @dataclass
 class Module:
     body: list[Statement]
+
+@dataclass
+class Decorator(Node):
+    value: Expression

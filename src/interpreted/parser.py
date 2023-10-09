@@ -35,6 +35,7 @@ from interpreted.nodes import (
     UnaryOp,
     While,
     alias,
+    Decorator
 )
 from interpreted.tokenizer import EOF, Token, TokenType, index_to_line_column, tokenize
 
@@ -176,6 +177,11 @@ class Parser:
         if not self.match_op(op):
             token = self.peek()
             raise ParseError(f"Expected '{op}', found '{token.string}'", self.index)
+    
+    def expect_name(self, name: str) -> None:
+        if not self.match_name(name):
+            token = self.peek()
+            raise ParseError(f"Expected '{name}', found '{token.string}'", self.index)
 
     def parse(self) -> Module:
         statements: list[Statement] = []
@@ -189,11 +195,25 @@ class Parser:
         # Extra newlines can be ignored as empty statements
         while self.match_type(TokenType.NEWLINE):
             pass
-
+        if self.peek().string == '@':
+            decorators = self.parse_decorators()
+            self.expect_name("def")
+            function_def = self.parse_function_def()
+            function_def.decorators = decorators
+            return function_def
         if self.match_name("def", "if", "for", "while"):
             return self.parse_multiline_statement()
         return self.parse_single_line_statement()
+    
+    def parse_decorators(self) -> list[Decorator]:
+        decorators = []
+        while self.match_op("@"):
+            expression = self.parse_expression()
+            self.expect(TokenType.NEWLINE)
+            decorators.append(Decorator(value=expression))
 
+        return decorators
+    
     def parse_multiline_statement(self) -> FunctionDef | For | If | While:
         keyword = self.current().string
         if keyword == "def":
@@ -212,7 +232,6 @@ class Parser:
         self.expect(TokenType.NAME)
         function_name = self.current().string
         self.expect_op("(")
-
         # special case: function just closes
         if self.match_op(")"):
             params = []
