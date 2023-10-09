@@ -120,15 +120,19 @@ def test_imports(tmp_path) -> None:
     """
     smth_content = """\
         from calc import *
+        def add2():
+            return add(2, 2)
     """
     utils_content = """\
         import smth as math
 
         def cos(x):
+            print(math.add2())
             return "bru what"
     """
     main_content = """\
         from utils import math, cos
+        import smth
 
         print(math.area(2))
         print(math.add(2,3))
@@ -156,5 +160,5 @@ def test_imports(tmp_path) -> None:
     )
 
     assert process.stderr == b""
-    assert process.stdout.decode() == "12.56\n5\n12\nbru what\n"
+    assert process.stdout.decode() == "12.56\n5\n12\n4\nbru what\n"
     assert process.returncode == 0
