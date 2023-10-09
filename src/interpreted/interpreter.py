@@ -66,7 +66,7 @@ class Object:
         return self.as_string()
 
 
-class ModuleObj(Object):
+class Module(Object):
     def __init__(self, attrs: {str: Scope}):
         self.attributes = attrs
 
@@ -423,7 +423,7 @@ class Interpreter:
             self.scope = parent_scope
             self.globals = parent_globals
 
-            module_obj = ModuleObj(attrs=vars(module_scope))
+            module_obj = Module(attrs=vars(module_scope))
 
             self.scope.set(name, module_obj)
 
