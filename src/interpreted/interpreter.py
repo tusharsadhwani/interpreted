@@ -17,6 +17,8 @@ from interpreted.nodes import (
     ExprStmt,
     FunctionDef,
     If,
+    Import,
+    ImportFrom,
     Module,
     Name,
     Node,
@@ -24,6 +26,7 @@ from interpreted.nodes import (
     Subscript,
     UnaryOp,
     While,
+    alias,
 )
 from interpreted.parser import parse
 
@@ -31,6 +34,13 @@ NOT_SET = object()
 
 
 class Scope:
+    def __init__(self):
+        self.set("print", Print())
+        self.set("len", Len())
+        self.set("int", Int())
+        self.set("float", Float())
+        self.set("deque", DequeConstructor())
+
     def get(self, name) -> Any:
         return getattr(self, name, NOT_SET)
 
@@ -54,6 +64,12 @@ class Object:
 
     def repr(self) -> str:
         return self.as_string()
+
+
+class Module(Object):
+    def __init__(self, members: dict[str, Object]):
+        super().__init__()
+        self.attributes.update(members)
 
 
 class Function(Object):
@@ -154,8 +170,9 @@ class Return(Exception):
 
 
 class UserFunction(Function):
-    def __init__(self, definition: FunctionDef) -> None:
+    def __init__(self, definition: FunctionDef, current_globals: Scope) -> None:
         self.definition = definition
+        self.current_globals = current_globals
 
     def as_string(self) -> str:
         return f"<function {self.definition.name!r}>"
@@ -167,8 +184,10 @@ class UserFunction(Function):
         super().ensure_args(args)
 
         parent_scope = interpreter.scope
+        parent_globals = interpreter.globals
 
         function_scope = Scope()
+        interpreter.globals = self.current_globals
         interpreter.scope = function_scope
 
         for param, arg in zip(self.definition.params, args):
@@ -183,6 +202,7 @@ class UserFunction(Function):
 
         finally:
             interpreter.scope = parent_scope
+            interpreter.globals = parent_globals
 
         return Value(None)
 
@@ -370,12 +390,6 @@ def is_truthy(obj: Object) -> bool:
 class Interpreter:
     def __init__(self) -> None:
         self.globals = Scope()
-        self.globals.set("print", Print())
-        self.globals.set("len", Len())
-        self.globals.set("int", Int())
-        self.globals.set("float", Float())
-        self.globals.set("deque", DequeConstructor())
-
         self.scope = self.globals
 
     def visit(self, node: Node) -> Object | None:
@@ -386,21 +400,7 @@ class Interpreter:
     def visit_Module(self, node: Module) -> None:
         for stmt in node.body:
             self.visit(stmt)
-        
-    # def visit_FunctionDef(self, node: FunctionDef) -> None:
-    #     function = UserFunction(node)
 
-    #     for decorator_node in node.decorators:
-    #         decorator = self.visit(decorator_node.value)
-
-    #         if not isinstance(decorator, Function):
-    #             object_type = decorator.__class__.__name__
-    #             raise InterpreterError(f"{object_type!r} object is not callable")
-
-    #         function = decorator.call(self, [function])
-
-    #     self.scope.set(node.name, function)
-    
     def visit_FunctionDef(self, node: FunctionDef) -> None:
         function = UserFunction(node)
 
@@ -414,8 +414,67 @@ class Interpreter:
                 raise InterpreterError(f"{object_type!r} object is not callable")
 
             function = decorator.call(self, [function])
+            self.scope.set(node.name, function)
 
-        self.scope.set(node.name, function)
+    def visit_Import(self, node: Import) -> None:
+        for alias in node.names:
+            name = alias.name
+            if alias.asname:
+                name = alias.asname
+
+            contents = ""
+            with open(f"{alias.name}.py", "r") as f:
+                contents = f.read()
+            module = parse(contents)
+
+            parent_scope = self.scope
+            parent_globals = self.globals
+
+            module_scope = Scope()
+            self.scope = module_scope
+            self.globals = module_scope
+
+            self.visit(module)
+
+            self.scope = parent_scope
+            self.globals = parent_globals
+
+            module_obj = Module(members=vars(module_scope))
+
+            self.scope.set(name, module_obj)
+
+    def visit_ImportFrom(self, node: ImportFrom) -> None:
+        module_name = node.module
+
+        contents = ""
+        with open(f"{module_name}.py", "r") as f:
+            contents = f.read()
+        module = parse(contents)
+
+        parent_scope = self.scope
+        parent_globals = self.globals
+
+        module_scope = Scope()
+        self.scope = module_scope
+        self.globals = module_scope
+
+        self.visit(module)
+
+        self.scope = parent_scope
+        self.globals = parent_globals
+
+        for alias in node.names:
+            name = alias.name
+            if name == "*":
+                for member, value in vars(module_scope).items():
+                    self.scope.set(member, value)
+                return
+
+            if alias.asname:
+                name = alias.asname
+
+            member = module_scope.get(alias.name)
+            self.scope.set(name, member)
 
     def visit_Assign(self, node: Assign) -> None:
         value = self.visit(node.value)
@@ -621,6 +680,7 @@ class Interpreter:
             raise InterpreterError(f"{object_type!r} object is not callable")
 
         arguments = [self.visit(arg) for arg in node.args]
+
         return function.call(self, arguments)
 
     def visit_Subscript(self, node: Subscript) -> Object:
@@ -686,6 +746,7 @@ class Interpreter:
         name = node.id
 
         value = self.scope.get(name)
+
         if value is NOT_SET:
             value = self.globals.get(name)
             if value is NOT_SET:

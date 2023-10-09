@@ -158,3 +158,62 @@ def test_file_not_found() -> None:
     assert process.stdout == b""
     assert process.stderr == b"\x1b[31mError:\x1b[m Unable to open file: 'foo.py'\n"
     assert process.returncode == 1
+
+
+def test_imports(tmp_path) -> None:
+    math_content = """\
+        PI = 3.14
+
+        def add(a, b):
+            return a + b
+
+        def mul(a, b):
+            return a * b
+
+        def area(r):
+            return PI * r * r
+    """
+    smth_content = """\
+        from calc import *
+        def add2():
+            return add(2, 2)
+    """
+    utils_content = """\
+        import smth as math
+
+        def cos(x):
+            print(math.add2())
+            return "bru what"
+    """
+    main_content = """\
+        from utils import math, cos
+        import smth
+
+        print(math.area(2))
+        print(math.add(2,3))
+        print(math.mul(3,4))
+        print(cos(30))
+    """
+
+    main = tmp_path / "main.py"
+    main.write_text(dedent(main_content))
+
+    utils = tmp_path / "utils.py"
+    utils.write_text(dedent(utils_content))
+
+    math = tmp_path / "calc.py"
+    math.write_text(dedent(math_content))
+
+    smth = tmp_path / "smth.py"
+    smth.write_text(dedent(smth_content))
+
+    process = subprocess.run(
+        ["interpreted", main.as_posix()],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=str(tmp_path),
+    )
+
+    assert process.stderr == b""
+    assert process.stdout.decode() == "12.56\n5\n12\n4\nbru what\n"
+    assert process.returncode == 0
