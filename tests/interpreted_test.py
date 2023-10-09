@@ -95,6 +95,61 @@ import pytest
             """,
             "10\n",
         ),
+        (
+            """\
+            def foo(func):    
+                print('inside decorator')
+                return func
+
+            @foo
+            def xyz():
+                print('inside xyz')
+
+            xyz()
+            """,
+            "inside decorator\ninside xyz\n",
+        ),
+        (
+            """\
+            def decorator_foo(func):
+                print('Inside decorator foo')
+                return func
+
+            def ab5(func):  
+                print('Inside decorator bar')
+                return func
+
+            @decorator_foo
+            @ab5
+            def xyz():
+                print('Inside xyz')
+
+            xyz()
+            """,
+            "Inside decorator bar\nInside decorator foo\nInside xyz\n",
+        ),
+        (
+            """\
+            def decorator_foo(func):
+                print('Inside decorator foo')
+                return func
+
+            def ab5(func):  
+                print('Inside decorator bar')
+                def wrapper():
+                    print('Inside wrapper')
+                    return func()
+                return wrapper
+
+            @decorator_foo
+            @ab5
+            def xyz():
+                print('Inside xyz')
+
+            xyz()
+            """,
+            "Inside decorator bar\nInside decorator foo\nInside wrapper\nInside xyz\n",
+        ),
     ),
 )
 def test_interpret(source, output) -> None:
