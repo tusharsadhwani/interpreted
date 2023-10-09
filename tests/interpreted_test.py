@@ -118,8 +118,11 @@ def test_imports(tmp_path) -> None:
         def area(r):
             return PI * r * r
     """
+    smth_content = """\
+        from calc import *
+    """
     utils_content = """\
-        import calc as math
+        import smth as math
 
         def cos(x):
             return "bru what"
@@ -141,6 +144,9 @@ def test_imports(tmp_path) -> None:
 
     math = tmp_path / "calc.py"
     math.write_text(dedent(math_content))
+
+    smth = tmp_path / "smth.py"
+    smth.write_text(dedent(smth_content))
 
     process = subprocess.run(
         ["interpreted", main.as_posix()],
