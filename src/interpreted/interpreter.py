@@ -4,8 +4,6 @@ from collections import deque
 from typing import Any
 from unittest import mock
 
-import sys
-
 from interpreted import nodes
 from interpreted.nodes import (
     Assign,
@@ -43,8 +41,6 @@ class Scope:
         self.set("float", Float())
         self.set("deque", DequeConstructor())
 
-        self.scope_lookup: {str: Scope} = {}
-
     def get(self, name) -> Any:
         return getattr(self, name, NOT_SET)
 
@@ -68,6 +64,11 @@ class Object:
 
     def repr(self) -> str:
         return self.as_string()
+
+
+class ModuleObj(Object):
+    def __init__(self, attrs: {str: Scope}):
+        self.attributes = attrs
 
 
 class Function(Object):
@@ -422,7 +423,9 @@ class Interpreter:
             self.scope = parent_scope
             self.globals = parent_globals
 
-            self.scope.set(name, module_scope)
+            module_obj = ModuleObj(attrs=vars(module_scope))
+
+            self.scope.set(name, module_obj)
 
     def visit_ImportFrom(self, node: ImportFrom) -> None:
         module_name = node.module
@@ -446,13 +449,16 @@ class Interpreter:
 
         for alias in node.names:
             name = alias.name
+            if name == "*":
+                for attr in module_scope.__dict__:
+                    self.scope.set(attr, module_scope.get(attr))
+                break
+
             if alias.asname:
                 name = alias.asname
 
             body = module_scope.get(alias.name)
             self.scope.set(name, body)
-            if type(body) is not Value:
-                self.scope.scope_lookup[name] = module_scope
 
     def visit_FunctionDef(self, node: FunctionDef) -> None:
         function = UserFunction(node, self.globals)
@@ -663,11 +669,6 @@ class Interpreter:
 
         arguments = [self.visit(arg) for arg in node.args]
 
-        if function.as_string in self.scope.scope_lookup:
-            module_scope = self.scope.scope_lookup[function.as_string]
-            print(vars(self.scope))
-            return function.call(self, arguments, module_scope)
-
         return function.call(self, arguments)
 
     def visit_Subscript(self, node: Subscript) -> Object:
@@ -719,11 +720,6 @@ class Interpreter:
         obj = self.visit(node.value)
         assert obj is not None
 
-        if type(obj) is Scope:
-            scoped_result = obj.get(attribute_name)
-
-            return scoped_result
-
         if attribute_name in obj.attributes:
             return obj.attributes[attribute_name]
 
@@ -738,8 +734,6 @@ class Interpreter:
         name = node.id
 
         value = self.scope.get(name)
-        if value in self.scope.scope_lookup:
-            return value
 
         if value is NOT_SET:
             value = self.globals.get(name)
