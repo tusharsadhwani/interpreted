@@ -483,7 +483,7 @@ class Interpreter:
                 raise InterpreterError(f"{object_type!r} object is not callable")
 
             function = decorator.call(self, [function])
-            self.scope.set(node.name, function)
+        self.scope.set(node.name, function)
 
     def visit_Assign(self, node: Assign) -> None:
         value = self.visit(node.value)
