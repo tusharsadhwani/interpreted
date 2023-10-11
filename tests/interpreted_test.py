@@ -77,20 +77,24 @@ import pytest
         ),
         (
             """\
-x = 5
-def bar():
-  x = 10
-  def baz():
-    def foo():
-      print(x)
-    return foo
-  return baz
+            x = 5
 
-foo = bar()()
-foo()
+            def bar():
+                x = 10
+
+                def baz():
+                    def foo():
+                        print(x)
+
+                    return foo
+
+                return baz
+
+            foo = bar()()
+            foo()
             """,
             "10\n",
-        )
+        ),
     ),
 )
 def test_interpret(source, output) -> None:

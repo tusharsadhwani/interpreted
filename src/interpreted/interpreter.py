@@ -36,12 +36,12 @@ NOT_SET = object()
 class Scope:
     def __init__(self, parent=None) -> None:
         self.data = {}
+        self.parent = parent
         self.set("print", Print())
         self.set("len", Len())
         self.set("int", Int())
         self.set("float", Float())
         self.set("deque", DequeConstructor())
-        self.parent = parent
 
     def get(self, name) -> Any:
         return self.data.get(name, NOT_SET)
@@ -172,7 +172,12 @@ class Return(Exception):
 
 
 class UserFunction(Function):
-    def __init__(self, definition: FunctionDef,  parent_scope: Scope, current_globals: Scope) -> None:
+    def __init__(
+        self,
+        definition: FunctionDef,
+        parent_scope: Scope,
+        current_globals: Scope,
+    ) -> None:
         self.definition = definition
         self.parent_scope = parent_scope
         self.current_globals = current_globals
@@ -427,7 +432,7 @@ class Interpreter:
             self.scope = parent_scope
             self.globals = parent_globals
 
-            module_obj = Module(members=vars(module_scope))
+            module_obj = Module(members=module_scope.data)
 
             self.scope.set(name, module_obj)
 
@@ -454,7 +459,7 @@ class Interpreter:
         for alias in node.names:
             name = alias.name
             if name == "*":
-                for member, value in vars(module_scope).items():
+                for member, value in module_scope.data.items():
                     self.scope.set(member, value)
                 return
 
@@ -745,11 +750,11 @@ class Interpreter:
                 current_scope = current_scope.parent
             else:
                 return value
-        
+
         value = self.globals.get(name)
         if value is NOT_SET:
             raise InterpreterError(f"{name!r} is not defined")
-    
+
         return value
 
     def visit_List(self, node: nodes.List) -> List:
