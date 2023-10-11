@@ -34,18 +34,20 @@ NOT_SET = object()
 
 
 class Scope:
-    def __init__(self):
+    def __init__(self, parent=None) -> None:
+        self.data = {}
         self.set("print", Print())
         self.set("len", Len())
         self.set("int", Int())
         self.set("float", Float())
         self.set("deque", DequeConstructor())
+        self.parent = parent
 
     def get(self, name) -> Any:
-        return getattr(self, name, NOT_SET)
+        return self.data.get(name, NOT_SET)
 
     def set(self, name, value) -> None:
-        setattr(self, name, value)
+        self.data[name] = value
 
 
 class InterpreterError(Exception):
@@ -170,8 +172,9 @@ class Return(Exception):
 
 
 class UserFunction(Function):
-    def __init__(self, definition: FunctionDef, current_globals: Scope) -> None:
+    def __init__(self, definition: FunctionDef,  parent_scope: Scope, current_globals: Scope) -> None:
         self.definition = definition
+        self.parent_scope = parent_scope
         self.current_globals = current_globals
 
     def as_string(self) -> str:
@@ -183,10 +186,10 @@ class UserFunction(Function):
     def call(self, interpreter: Interpreter, args: list[Object]) -> Object:
         super().ensure_args(args)
 
-        parent_scope = interpreter.scope
+        current_scope = interpreter.scope
         parent_globals = interpreter.globals
 
-        function_scope = Scope()
+        function_scope = Scope(parent=self.parent_scope)
         interpreter.globals = self.current_globals
         interpreter.scope = function_scope
 
@@ -201,7 +204,7 @@ class UserFunction(Function):
             return ret.value
 
         finally:
-            interpreter.scope = parent_scope
+            interpreter.scope = current_scope
             interpreter.globals = parent_globals
 
         return Value(None)
@@ -462,7 +465,8 @@ class Interpreter:
             self.scope.set(name, member)
 
     def visit_FunctionDef(self, node: FunctionDef) -> None:
-        function = UserFunction(node, self.globals)
+        parent_scope = self.scope
+        function = UserFunction(node, parent_scope, self.globals)
         self.scope.set(node.name, function)
 
     def visit_Assign(self, node: Assign) -> None:
@@ -734,13 +738,18 @@ class Interpreter:
     def visit_Name(self, node: Name) -> Value:
         name = node.id
 
-        value = self.scope.get(name)
-
-        if value is NOT_SET:
-            value = self.globals.get(name)
+        current_scope = self.scope
+        while current_scope is not None:
+            value = current_scope.get(name)
             if value is NOT_SET:
-                raise InterpreterError(f"{name!r} is not defined")
-
+                current_scope = current_scope.parent
+            else:
+                return value
+        
+        value = self.globals.get(name)
+        if value is NOT_SET:
+            raise InterpreterError(f"{name!r} is not defined")
+    
         return value
 
     def visit_List(self, node: nodes.List) -> List:

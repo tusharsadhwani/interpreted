@@ -75,6 +75,22 @@ import pytest
             """,
             "a\nbc\nab\nabc\nb\n",
         ),
+        (
+            """\
+x = 5
+def bar():
+  x = 10
+  def baz():
+    def foo():
+      print(x)
+    return foo
+  return baz
+
+foo = bar()()
+foo()
+            """,
+            "10\n",
+        )
     ),
 )
 def test_interpret(source, output) -> None:
