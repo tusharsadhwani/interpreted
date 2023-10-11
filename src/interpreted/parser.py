@@ -232,6 +232,7 @@ class Parser:
         self.expect(TokenType.NAME)
         function_name = self.current().string
         self.expect_op("(")
+
         # special case: function just closes
         if self.match_op(")"):
             params = []
