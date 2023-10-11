@@ -409,22 +409,6 @@ class Interpreter:
         for stmt in node.body:
             self.visit(stmt)
 
-    def visit_FunctionDef(self, node: FunctionDef) -> None:
-        parent_scope = self.scope
-        function = UserFunction(node, parent_scope, self.globals)
-
-        decorators = reversed(node.decorators)
-
-        for decorator_node in decorators:
-            decorator = self.visit(decorator_node.value)
-
-            if not isinstance(decorator, Function):
-                object_type = decorator.__class__.__name__
-                raise InterpreterError(f"{object_type!r} object is not callable")
-
-            function = decorator.call(self, [function])
-            self.scope.set(node.name, function)
-
     def visit_Import(self, node: Import) -> None:
         for alias in node.names:
             name = alias.name
@@ -484,6 +468,22 @@ class Interpreter:
 
             member = module_scope.get(alias.name)
             self.scope.set(name, member)
+
+    def visit_FunctionDef(self, node: FunctionDef) -> None:
+        parent_scope = self.scope
+        function = UserFunction(node, parent_scope, self.globals)
+
+        decorators = reversed(node.decorators)
+
+        for decorator_node in decorators:
+            decorator = self.visit(decorator_node.value)
+
+            if not isinstance(decorator, Function):
+                object_type = decorator.__class__.__name__
+                raise InterpreterError(f"{object_type!r} object is not callable")
+
+            function = decorator.call(self, [function])
+            self.scope.set(node.name, function)
 
     def visit_Assign(self, node: Assign) -> None:
         value = self.visit(node.value)
