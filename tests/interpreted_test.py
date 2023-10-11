@@ -77,6 +77,26 @@ import pytest
         ),
         (
             """\
+            x = 5
+
+            def bar():
+                x = 10
+
+                def baz():
+                    def foo():
+                        print(x)
+
+                    return foo
+
+                return baz
+
+            foo = bar()()
+            foo()
+            """,
+            "10\n",
+        ),
+        (
+            """\
             def foo(func):    
                 print('inside decorator')
                 return func
@@ -129,7 +149,7 @@ import pytest
             xyz()
             """, 
             "Inside decorator bar\nInside decorator foo\nInside wrapper\nInside xyz\n",
-        )
+        ),
     ),
 )
 def test_interpret(source, output) -> None:
