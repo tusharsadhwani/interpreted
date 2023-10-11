@@ -106,9 +106,9 @@ import pytest
                 print('inside xyz')
 
             xyz()
-            """, 
+            """,
             "inside decorator\ninside xyz\n",
-        ), 
+        ),
         (
             """\
             def decorator_foo(func):
@@ -125,7 +125,7 @@ import pytest
                 print('Inside xyz')
 
             xyz()
-            """, 
+            """,
             "Inside decorator bar\nInside decorator foo\nInside xyz\n",
         ),
         (
@@ -147,7 +147,7 @@ import pytest
                 print('Inside xyz')
 
             xyz()
-            """, 
+            """,
             "Inside decorator bar\nInside decorator foo\nInside wrapper\nInside xyz\n",
         ),
     ),

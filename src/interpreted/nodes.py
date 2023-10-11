@@ -196,6 +196,7 @@ class ImportFrom(Statement):
 class Module:
     body: list[Statement]
 
+
 @dataclass
 class Decorator(Node):
     value: Expression
