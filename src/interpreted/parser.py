@@ -195,6 +195,7 @@ class Parser:
         # Extra newlines can be ignored as empty statements
         while self.match_type(TokenType.NEWLINE):
             pass
+
         if self.peek().string == '@':
             decorators = self.parse_decorators()
             self.expect_name("def")
