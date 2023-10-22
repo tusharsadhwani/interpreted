@@ -3,7 +3,9 @@
 A Python interpreter, written from scratch in Python.
 
 This interpreter is made solely as the base for my talk,
-"[Writing a Python interpreter from scratch, in half an hour.](https://ep2023.europython.eu/session/writing-a-python-interpreter-from-scratch-in-half-an-hour)"
+"[Writing a Python interpreter from scratch, in half an hour.](https://ep2023.europython.eu/session/writing-a-python-interpreter-from-scratch-in-half-an-hour)", but is now being used as a project to learn how interpreters work.
+
+Feel free to open up issues, pick up tasks, and ask questions.
 
 ## Installation
 
