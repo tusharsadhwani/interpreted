@@ -1,8 +1,10 @@
 from __future__ import annotations
+from _ast import FunctionDef
 
 import ast
 import sys
 from keyword import iskeyword
+from typing import Any
 
 from interpreted.nodes import (
     Assign,
@@ -686,7 +688,51 @@ class Parser:
 
         raise ParseError(f"Unexpected token {self.peek().string!r}", self.index)
 
-
+class ScopeConsistencyChecker(ast.NodeVisitor):
+    def __init__(self):
+        self.inconsistent_nodes = []
+        self.loaded_names = set()
+    
+    def check_consistency(self, node, variable_name):
+        if isinstance(node.ctx, nodes.Store):
+            if variable_name in self.loaded_names:
+                self.inconsistent_nodes.append(node)
+        
+        else:
+            self.loaded_names.add(variable_name)
+    
+    def visit_Name(self, node):
+        self.check_consistency(node, node.id)
+    def visit_Name(self, node):
+        self.check_consistency(node, node._attributes)
+        
+class UnboundLocalErrorChecker(ast.NodeVisitor):
+    
+    def __init__(self):
+        self.incosistent_nodes = []
+    
+    def visit_scope(self, node):
+        checker = ScopeConsistencyChecker()
+        checker.visit(node)
+        self.incosistent_nodes.update(checker.inconsistent_nodes)   
+        
+    def visit_FunctionDef(self, node):
+        self.visit(node)
+        
+    def visit_AsyncFunctionDef(self, node):
+        self.visit(node)
+        
+    def visit_classDef(self, node):
+        self.visit(node)
+  
+# main driver code for UnboundLocalEerror checker    
+checker = UnboundLocalErrorChecker()
+checker.vist(Module)
+if checker.incosistent_nodes:
+    first_incon = checker.incosistent_nodes[0]
+    raise ParseError(first_incon.line, first_incon.column)
+    
+    
 def assert_expressions_are_targets(expressions: list[Expression], index) -> None:
     for target in expressions:
         if not isinstance(target, (Name, Subscript)):
