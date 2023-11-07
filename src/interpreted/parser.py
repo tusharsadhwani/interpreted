@@ -727,7 +727,7 @@ class UnboundLocalErrorChecker(ast.NodeVisitor):
   
 # main driver code for UnboundLocalEerror checker    
 checker = UnboundLocalErrorChecker()
-checker.vist(Module)
+checker.visit(Module)
 if checker.incosistent_nodes:
     first_incon = checker.incosistent_nodes[0]
     raise ParseError(first_incon.line, first_incon.column)
