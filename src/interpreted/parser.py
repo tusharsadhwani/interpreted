@@ -226,7 +226,9 @@ class Parser:
         if keyword == "while":
             return self.parse_while()
 
-        # TODO: for
+        if keyword == "for":
+            return self.parse_for()
+
         raise NotImplementedError()
 
     def parse_function_def(self) -> FunctionDef:
@@ -282,6 +284,24 @@ class Parser:
             orelse = self.parse_block()
 
         return While(condition=condition, body=body, orelse=orelse)
+
+    def parse_for(self) -> For:
+        targets = []
+        targets.append(self.parse_primary())
+        while self.match_op(","):
+            # TODO Review this?
+            if self.peek().token_type == TokenType.NAME and self.peek().string == 'in':
+                break
+            targets.append(self.parse_primary())
+
+        self.expect_name('in')
+
+        iterable = self.parse_expressions()
+
+        self.expect_op(':')
+        body = self.parse_block()
+
+        return For(target=targets, iterable=iterable, body=body, orelse=None)
 
     def parse_block(self) -> list[Statement]:
         self.expect(TokenType.NEWLINE)

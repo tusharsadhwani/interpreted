@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Any
 from unittest import mock
+import sys
 
 from interpreted import nodes
 from interpreted.nodes import (
@@ -42,6 +43,7 @@ class Scope:
         self.set("int", Int())
         self.set("float", Float())
         self.set("deque", DequeConstructor())
+        self.set("enumerate", Enumerate())
 
     def get(self, name) -> Any:
         return self.data.get(name, NOT_SET)
@@ -120,6 +122,19 @@ class Len(Function):
             return Value(len(item.value))
 
         raise InterpreterError(f"{type(item).__name__} has no len()")
+
+
+class Enumerate(Function):
+    def as_string(self) -> str:
+        return "<function 'enumerate'>"
+
+    def arg_count(self) -> int:
+        return 1
+
+    def call(self, _: Interpreter, args: list[Object]) -> Object:
+        super().ensure_args(args)
+        for idx, val in enumerate(args[0]):
+            yield Tuple([Value(idx), val])
 
 
 class Int(Function):
@@ -257,6 +272,23 @@ class Append(Function):
         self.wrapper._data.append(item)
 
 
+class Items(Function):
+    def __init__(self, wrapper: Dict) -> None:
+        super().__init__()
+        self.wrapper = wrapper
+
+    def as_string(self) -> str:
+        return f"<method 'items' of {self.wrapper.repr()}>"
+
+    def arg_count(self) -> int:
+        return 0
+
+    def call(self, _: Interpreter, args: list[Object]) -> Any:
+        super().ensure_args(args)
+        for kvp in self.wrapper._dict.items():
+            yield Tuple(kvp)
+
+
 class PopLeft(Function):
     def __init__(self, deque: Deque) -> None:
         super().__init__()
@@ -362,6 +394,9 @@ class List(Object):
     def as_string(self) -> str:
         return "[" + ", ".join(item.repr() for item in self._data) + "]"
 
+    # TODO Review this
+    def __iter__(self):
+        return self._data.__iter__()
 
 class Tuple(Object):
     def __init__(self, elements) -> None:
@@ -375,8 +410,8 @@ class Tuple(Object):
 class Dict(Object):
     def __init__(self, keys: list[Object], values: list[Object]) -> None:
         super().__init__()
-
         self._dict = {key: value for key, value in zip(keys, values, strict=True)}
+        self.methods["items"] = Items(self)
 
     def as_string(self) -> str:
         return (
@@ -387,6 +422,9 @@ class Dict(Object):
             + "}"
         )
 
+    # TODO review this
+    def __iter__(self):
+        return self._dict.__iter__()
 
 def is_truthy(obj: Object) -> bool:
     if isinstance(obj, Value):
@@ -543,6 +581,32 @@ class Interpreter:
         else:
             for stmt in node.orelse:
                 self.visit(stmt)
+
+    def visit_For(self, node: For) -> None:
+        if len(node.iterable) == 1:
+            elements = self.visit(node.iterable[0])
+        else:
+            elements = [self.visit(e) for e in node.iterable]
+        for element in elements:
+            value = element
+            if len(node.target) > 1:
+                # TODO Review this: must be tuple? (or can it be list too?)
+                if len(node.target) > len(value._data):
+                    raise Exception(f"ValueError: too many values to unpack (expected {len(node.target)})")
+                for idx, t in enumerate(node.target):
+                    if isinstance(t, Name):
+                        self.scope.set(t.id, value._data[idx])       
+            else:
+                target = node.target[0]
+                if isinstance(target, Name):
+                    self.scope.set(target.id, value)
+            for stmt in node.body:
+                try:
+                    self.visit(stmt)
+                except Break:
+                    return
+                except Continue:
+                    break
 
     def visit_While(self, node: While) -> None:
         while is_truthy(self.visit(node.condition)):
@@ -792,3 +856,24 @@ def interpret(source: str) -> None:
         return
 
     Interpreter().visit(module)
+
+
+def main() -> None:
+    source = sys.stdin.read()
+    module = interpret(source)
+    if module is None:
+        return
+
+    if "--pretty" in sys.argv:
+        try:
+            import black
+        except ImportError:
+            print("Error: `black` needs to be installed for `--pretty` to work.")
+
+        print(black.format_str(repr(module), mode=black.Mode()))
+    else:
+        print(module)
+
+
+if __name__ == "__main__":
+    main()
