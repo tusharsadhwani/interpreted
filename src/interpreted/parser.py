@@ -290,15 +290,15 @@ class Parser:
         targets.append(self.parse_primary())
         while self.match_op(","):
             # TODO Review this?
-            if self.peek().token_type == TokenType.NAME and self.peek().string == 'in':
+            if self.peek().token_type == TokenType.NAME and self.peek().string == "in":
                 break
             targets.append(self.parse_primary())
 
-        self.expect_name('in')
+        self.expect_name("in")
 
         iterable = self.parse_expressions()
 
-        self.expect_op(':')
+        self.expect_op(":")
         body = self.parse_block()
 
         return For(target=targets, iterable=iterable, body=body, orelse=None)

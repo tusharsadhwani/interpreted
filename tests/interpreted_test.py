@@ -167,6 +167,7 @@ def test_interpret(source, output) -> None:
     assert process.stderr == b""
     assert process.stdout.decode() == dedent(output)
 
+
 @pytest.mark.parametrize(
     ("source", "output"),
     (
@@ -174,8 +175,8 @@ def test_interpret(source, output) -> None:
             """\
             for e in [1,2]:
                 print(e)
-            """, 
-            "1\n2\n"
+            """,
+            "1\n2\n",
         ),
         (
             """\
@@ -183,14 +184,14 @@ def test_interpret(source, output) -> None:
             for e in lst:
                 print(e)
             """,
-            "test\ntest123\n"
+            "test\ntest123\n",
         ),
         (
             """\
             for x in 1, 2:
                 print(x)
             """,
-            "1\n2\n"
+            "1\n2\n",
         ),
         (
             """\
@@ -198,7 +199,7 @@ def test_interpret(source, output) -> None:
             for k in dct:
                 print(k, dct[k])
             """,
-            "one 1\ntwo 2\n"
+            "one 1\ntwo 2\n",
         ),
         (
             """\
@@ -206,7 +207,7 @@ def test_interpret(source, output) -> None:
             for k,v in dct.items():
                 print(k, v)
             """,
-            "one 1\ntwo 2\n"
+            "one 1\ntwo 2\n",
         ),
         (
             """\
@@ -214,7 +215,7 @@ def test_interpret(source, output) -> None:
             for k in dct.items():
                 print(k)
             """,
-            "('one', 1)\n('two', 2)\n"
+            "('one', 1)\n('two', 2)\n",
         ),
         (
             """\
@@ -222,7 +223,7 @@ def test_interpret(source, output) -> None:
             for idx, tup in enumerate(dct):
                 print(idx, tup)
             """,
-            "0 one\n1 two\n"
+            "0 one\n1 two\n",
         ),
     ),
 )
@@ -231,7 +232,7 @@ def test_for(source, output) -> None:
     with tempfile.NamedTemporaryFile("w+") as file:
         file.write(dedent(source))
         file.seek(0)
-        
+
         process = subprocess.run(
             ["interpreted", file.name],
             stdout=subprocess.PIPE,
@@ -244,7 +245,7 @@ def test_for(source, output) -> None:
         process2 = subprocess.run(
             ["python", file.name],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,  
+            stderr=subprocess.PIPE,
         )
 
     assert process2.stdout.decode() == dedent(output)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import sys
 from collections import deque
 from typing import Any
 from unittest import mock
-import sys
 
 from interpreted import nodes
 from interpreted.nodes import (
@@ -398,6 +398,7 @@ class List(Object):
     def __iter__(self):
         return self._data.__iter__()
 
+
 class Tuple(Object):
     def __init__(self, elements) -> None:
         super().__init__()
@@ -425,6 +426,7 @@ class Dict(Object):
     # TODO review this
     def __iter__(self):
         return self._dict.__iter__()
+
 
 def is_truthy(obj: Object) -> bool:
     if isinstance(obj, Value):
@@ -592,10 +594,12 @@ class Interpreter:
             if len(node.target) > 1:
                 # TODO Review this: must be tuple? (or can it be list too?)
                 if len(node.target) > len(value._data):
-                    raise Exception(f"ValueError: too many values to unpack (expected {len(node.target)})")
+                    raise Exception(
+                        f"ValueError: too many values to unpack (expected {len(node.target)})"
+                    )
                 for idx, t in enumerate(node.target):
                     if isinstance(t, Name):
-                        self.scope.set(t.id, value._data[idx])       
+                        self.scope.set(t.id, value._data[idx])
             else:
                 target = node.target[0]
                 if isinstance(target, Name):
