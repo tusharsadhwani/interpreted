@@ -239,16 +239,6 @@ def test_for(source, output) -> None:
             stderr=subprocess.PIPE,
         )
 
-        # also test real python output
-        # TODO this gives a lot of coverage warnings
-        file.seek(0)
-        process2 = subprocess.run(
-            ["python", file.name],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
-    assert process2.stdout.decode() == dedent(output)
     assert process.stderr == b""
     assert process.stdout.decode() == dedent(output)
 

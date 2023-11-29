@@ -289,19 +289,29 @@ class Parser:
         targets = []
         targets.append(self.parse_primary())
         while self.match_op(","):
-            # TODO Review this?
+            # as soon as we see the first `in` keyword, we assume target to have ended
             if self.peek().token_type == TokenType.NAME and self.peek().string == "in":
                 break
+
             targets.append(self.parse_primary())
+
+        if len(targets) == 1:
+            target = targets[0]
+        else:
+            target = Tuple(targets)
 
         self.expect_name("in")
 
-        iterable = self.parse_expressions()
+        expressions = self.parse_expressions()
+        if len(expressions) == 1:
+            iterable = expressions[0]
+        else:
+            iterable = Tuple(expressions)
 
         self.expect_op(":")
         body = self.parse_block()
 
-        return For(target=targets, iterable=iterable, body=body, orelse=None)
+        return For(target=target, iterable=iterable, body=body, orelse=None)
 
     def parse_block(self) -> list[Statement]:
         self.expect(TokenType.NEWLINE)
