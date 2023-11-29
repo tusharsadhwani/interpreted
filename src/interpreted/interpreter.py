@@ -415,7 +415,7 @@ class Tuple(Object):
 class Dict(Object):
     def __init__(self, keys: list[Object], values: list[Object]) -> None:
         super().__init__()
-        self._dict = {key: value for key, value in zip(keys, values, strict=True)}
+        self._dict = {key: value for key, value in zip(keys, values)}
         self.methods["items"] = Items(self)
 
     def as_string(self) -> str:
