@@ -168,6 +168,81 @@ def test_interpret(source, output) -> None:
     assert process.stdout.decode() == dedent(output)
 
 
+@pytest.mark.parametrize(
+    ("source", "output"),
+    (
+        (
+            """\
+            for e in [1,2]:
+                print(e)
+            """,
+            "1\n2\n",
+        ),
+        (
+            """\
+            lst = ['test','test123']
+            for e in lst:
+                print(e)
+            """,
+            "test\ntest123\n",
+        ),
+        (
+            """\
+            for x in 1, 2:
+                print(x)
+            """,
+            "1\n2\n",
+        ),
+        (
+            """\
+            dct = { "one": 1, "two": 2 }
+            for k in dct:
+                print(k, dct[k])
+            """,
+            "one 1\ntwo 2\n",
+        ),
+        (
+            """\
+            dct = { "one": 1, "two": 2 }
+            for k,v in dct.items():
+                print(k, v)
+            """,
+            "one 1\ntwo 2\n",
+        ),
+        (
+            """\
+            dct = { "one": 1, "two": 2 }
+            for k in dct.items():
+                print(k)
+            """,
+            "('one', 1)\n('two', 2)\n",
+        ),
+        (
+            """\
+            dct = { "one": 1, "two": 2 }
+            for idx, tup in enumerate(dct):
+                print(idx, tup)
+            """,
+            "0 one\n1 two\n",
+        ),
+    ),
+)
+def test_for(source, output) -> None:
+    """Tests the interpreter CLI."""
+    with tempfile.NamedTemporaryFile("w+") as file:
+        file.write(dedent(source))
+        file.seek(0)
+
+        process = subprocess.run(
+            ["interpreted", file.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    assert process.stderr == b""
+    assert process.stdout.decode() == dedent(output)
+
+
 def test_file_not_found() -> None:
     """Tests the file not found prompt."""
     process = subprocess.run(

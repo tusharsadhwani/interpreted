@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import sys
 from collections import deque
-from typing import Any
+from typing import Any, Iterable
 from unittest import mock
 
 from interpreted import nodes
@@ -42,6 +43,7 @@ class Scope:
         self.set("int", Int())
         self.set("float", Float())
         self.set("deque", DequeConstructor())
+        self.set("enumerate", Enumerate())
 
     def get(self, name) -> Any:
         return self.data.get(name, NOT_SET)
@@ -120,6 +122,20 @@ class Len(Function):
             return Value(len(item.value))
 
         raise InterpreterError(f"{type(item).__name__} has no len()")
+
+
+class Enumerate(Function):
+    def as_string(self) -> str:
+        return "<function 'enumerate'>"
+
+    def arg_count(self) -> int:
+        return 1
+
+    def call(self, _: Interpreter, args: list[Object]) -> Object:
+        super().ensure_args(args)
+        # We don't have generator support yet :^)
+        pairs = [Tuple([Value(idx), val]) for idx, val in enumerate(args[0])]
+        return List(pairs)
 
 
 class Int(Function):
@@ -257,6 +273,24 @@ class Append(Function):
         self.wrapper._data.append(item)
 
 
+class Items(Function):
+    def __init__(self, wrapper: Dict) -> None:
+        super().__init__()
+        self.wrapper = wrapper
+
+    def as_string(self) -> str:
+        return f"<method 'items' of {self.wrapper.repr()}>"
+
+    def arg_count(self) -> int:
+        return 0
+
+    def call(self, _: Interpreter, args: list[Object]) -> Any:
+        super().ensure_args(args)
+        # We don't have generator support yet :^)
+        pairs = [Tuple(key_value_pair) for key_value_pair in self.wrapper._dict.items()]
+        return List(pairs)
+
+
 class PopLeft(Function):
     def __init__(self, deque: Deque) -> None:
         super().__init__()
@@ -354,7 +388,7 @@ class Join(Function):
 
 
 class List(Object):
-    def __init__(self, elements) -> None:
+    def __init__(self, elements: Iterable[Object]) -> None:
         super().__init__()
         self._data = elements
         self.methods["append"] = Append(self)
@@ -362,21 +396,27 @@ class List(Object):
     def as_string(self) -> str:
         return "[" + ", ".join(item.repr() for item in self._data) + "]"
 
+    def __iter__(self) -> Iterable[Object]:
+        return iter(self._data)
+
 
 class Tuple(Object):
-    def __init__(self, elements) -> None:
+    def __init__(self, elements: Iterable[Object]) -> None:
         super().__init__()
         self._data = elements
 
     def as_string(self) -> str:
         return "(" + ", ".join(item.repr() for item in self._data) + ")"
 
+    def __iter__(self) -> Iterable[Object]:
+        return iter(self._data)
+
 
 class Dict(Object):
     def __init__(self, keys: list[Object], values: list[Object]) -> None:
         super().__init__()
-
-        self._dict = {key: value for key, value in zip(keys, values, strict=True)}
+        self._dict = {key: value for key, value in zip(keys, values)}
+        self.methods["items"] = Items(self)
 
     def as_string(self) -> str:
         return (
@@ -386,6 +426,9 @@ class Dict(Object):
             )
             + "}"
         )
+
+    def __iter__(self) -> Iterable[Object]:
+        return iter(list(self._dict))
 
 
 def is_truthy(obj: Object) -> bool:
@@ -486,13 +529,15 @@ class Interpreter:
 
         self.scope.set(node.name, function)
 
-    def visit_Assign(self, node: Assign) -> None:
-        value = self.visit(node.value)
-        assert len(node.targets) == 1  # TODO
-        target = node.targets[0]
-
+    def assign(self, target: Node, value: Object) -> None:
         if isinstance(target, Name):
             self.scope.set(target.id, value)
+
+        elif isinstance(target, (nodes.List, nodes.Tuple)) and isinstance(
+            value, (List, Tuple, Deque, Dict)
+        ):
+            for element, value in zip(target.elements, value):
+                self.assign(element, value)
 
         elif isinstance(target, Subscript):
             obj = self.visit(target.value)
@@ -517,7 +562,14 @@ class Interpreter:
                 )
 
         else:
-            raise NotImplementedError(target)  # TODO
+            raise NotImplementedError(target, value)  # TODO
+
+    def visit_Assign(self, node: Assign) -> None:
+        value = self.visit(node.value)
+        assert len(node.targets) == 1  # TODO
+        target = node.targets[0]
+
+        self.assign(target, value)
 
     def visit_AugAssign(self, node: AugAssign) -> None:
         increment = self.visit(node.value)
@@ -543,6 +595,29 @@ class Interpreter:
         else:
             for stmt in node.orelse:
                 self.visit(stmt)
+
+    def visit_For(self, node: nodes.For) -> None:
+        if isinstance(node.iterable, (nodes.List, nodes.Tuple)):
+            elements = [self.visit(element) for element in node.iterable.elements]
+        elif isinstance(node.iterable, nodes.Dict):
+            elements = [self.visit(element) for element in node.iterable.keys]
+        else:
+            elements = self.visit(node.iterable)
+            if not isinstance(elements, (List, Tuple, Deque, Dict)):
+                raise InterpreterError(
+                    f"Object of type {type(elements).__name__} is not iterable"
+                )
+
+        for element in elements:
+            self.assign(node.target, element)
+
+            for stmt in node.body:
+                try:
+                    self.visit(stmt)
+                except Break:
+                    return
+                except Continue:
+                    break
 
     def visit_While(self, node: While) -> None:
         while is_truthy(self.visit(node.condition)):
@@ -792,3 +867,24 @@ def interpret(source: str) -> None:
         return
 
     Interpreter().visit(module)
+
+
+def main() -> None:
+    source = sys.stdin.read()
+    module = interpret(source)
+    if module is None:
+        return
+
+    if "--pretty" in sys.argv:
+        try:
+            import black
+        except ImportError:
+            print("Error: `black` needs to be installed for `--pretty` to work.")
+
+        print(black.format_str(repr(module), mode=black.Mode()))
+    else:
+        print(module)
+
+
+if __name__ == "__main__":
+    main()
