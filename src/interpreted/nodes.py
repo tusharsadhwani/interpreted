@@ -25,6 +25,7 @@ class Constant(Expression):
 @dataclass
 class Name(Expression):
     value: str
+    ctx: Literal["load", "store"]  # Added context
 
 
 @dataclass
@@ -47,12 +48,14 @@ class Dict(Expression):
 class Attribute(Expression):
     value: Expression
     attr: str
+    ctx: Literal["load", "store"]  
 
 
 @dataclass
 class Subscript(Expression):
     value: Expression
     key: Expression
+    ctx: Literal["load", "store"]  
 
 
 @dataclass
@@ -73,6 +76,7 @@ class Call(Expression):
 @dataclass
 class Name(Expression):
     id: str
+    ctx: Literal["load", "store"]  
 
 
 @dataclass
