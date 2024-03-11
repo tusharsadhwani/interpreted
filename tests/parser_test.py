@@ -9,10 +9,12 @@ from interpreted.nodes import (
     Compare,
     Constant,
     ExprStmt,
+    For,
     Import,
     ImportFrom,
     Module,
     Name,
+    Tuple,
     While,
     alias,
 )
@@ -125,6 +127,48 @@ from interpreted.tokenizer import Tokenizer
                             alias(name="ara", asname="a"),
                             alias(name="b", asname="aux"),
                         ],
+                    ),
+                ]
+            ),
+        ),
+        (
+            """\
+            for a in b:
+                42
+            for i, j in x, t, u in y in a:
+                print(1)
+            """,
+            Module(
+                body=[
+                    For(
+                        target=Name(id="a"),
+                        iterable=Name(id="b"),
+                        body=[ExprStmt(value=Constant(value=42))],
+                        orelse=None,
+                    ),
+                    For(
+                        target=Tuple(elements=[Name(id="i"), Name(id="j")]),
+                        iterable=Tuple(
+                            elements=[
+                                Name(id="x"),
+                                Name(id="t"),
+                                Compare(
+                                    left=Compare(
+                                        left=Name(id="u"), op="in", right=Name(id="y")
+                                    ),
+                                    op="in",
+                                    right=Name(id="a"),
+                                ),
+                            ]
+                        ),
+                        body=[
+                            ExprStmt(
+                                value=Call(
+                                    function=Name(id="print"), args=[Constant(value=1)]
+                                )
+                            )
+                        ],
+                        orelse=None,
                     ),
                 ]
             ),
